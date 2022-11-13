@@ -1,0 +1,28 @@
+--cpu Cortex-M3
+"pid_control_test\startup_stm32f103xb.o"
+"pid_control_test\pid.o"
+"pid_control_test\main.o"
+"pid_control_test\gpio.o"
+"pid_control_test\tim.o"
+"pid_control_test\usart.o"
+"pid_control_test\stm32f1xx_it.o"
+"pid_control_test\stm32f1xx_hal_msp.o"
+"pid_control_test\stm32f1xx_hal_gpio_ex.o"
+"pid_control_test\stm32f1xx_hal_tim.o"
+"pid_control_test\stm32f1xx_hal_tim_ex.o"
+"pid_control_test\stm32f1xx_hal.o"
+"pid_control_test\stm32f1xx_hal_rcc.o"
+"pid_control_test\stm32f1xx_hal_rcc_ex.o"
+"pid_control_test\stm32f1xx_hal_gpio.o"
+"pid_control_test\stm32f1xx_hal_dma.o"
+"pid_control_test\stm32f1xx_hal_cortex.o"
+"pid_control_test\stm32f1xx_hal_pwr.o"
+"pid_control_test\stm32f1xx_hal_flash.o"
+"pid_control_test\stm32f1xx_hal_flash_ex.o"
+"pid_control_test\stm32f1xx_hal_exti.o"
+"pid_control_test\stm32f1xx_hal_uart.o"
+"pid_control_test\system_stm32f1xx.o"
+--library_type=microlib --strict --scatter "pid_control_test\pid_control_test.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "pid_control_test.map" -o pid_control_test\pid_control_test.axf
