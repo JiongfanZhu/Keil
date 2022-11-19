@@ -161,35 +161,6 @@ int main(void)
 	Wheel(1,0);
 	Wheel(2,0);
 	
-	//HAL_Delay(5000);
-	//speed_pid_flag = 1;
-	//x_pid_flag = 0;
-	//theta_pid_flag = 1;
-	//b_pid_flag = 1;
-	
-//	scanf("%s",s);
-//	if(strcmp(s,"start")==0) // start
-//	{
-//		//memset(s,'\0',strlen(s));
-//		printf("start\n");
-//		speed_pid_flag = 1;
-//		x_pid_flag = 0;
-//		theta_pid_flag = 1;
-//		b_pid_flag = 1;
-//	}
-//	else if(strcmp(s,"stop")==0)
-//	{
-//		speed_pid_flag = 0;
-//		theta_pid_flag = 0;
-//	}
-//	else
-//	{
-//		//memset(s,'\0',strlen(s));
-//		UART_CHANGE(1);
-//		printf("%s",s);
-//	}
-
-	//HAL_Delay(5000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
