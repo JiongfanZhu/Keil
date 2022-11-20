@@ -510,6 +510,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 //							theta_pid_flag = 1;
 //							b_pid_flag = 1;
 //						}
+					for(int i=0;i<40;i++)rData3[i]='\0';
     		}
   		}
 
@@ -549,7 +550,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 							x_pid_flag = 0;
 							theta_pid_flag = 0;
 						}
-						
+						for(int i=0;i<40;i++)rData1[i]='\0';
     		}
   		}
 
