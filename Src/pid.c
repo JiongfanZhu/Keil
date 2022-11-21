@@ -198,7 +198,6 @@ int PID_b_update(int b,float theta){
 //			return 0;
 //		}
     
-		
     pid_b.integral+=pid_b.err;
 
     /*do not int big err*/
@@ -221,76 +220,4 @@ int PID_b_update(int b,float theta){
     // speed<0 means clockwise, speed>0 means anticlockwise
     // we need motor_L -> speed_L-Delta_speed, motor_R -> speed_R+Delta_speed
     return pid_b.voltage;
-}
-
-//float PID_theta_update(float theta)
-//{
-    /*this function return Delta_rpm*/
-    /*theta from -90 to 90*/
-//    int Delta_speed = 0;
-
-    /*update set and actual*/
-    //pid_theta.SetSpeed=setspeed;
-//    pid_theta.ActualSpeed=theta;
-
-    /*calculate output Delta_theta*/
-//    pid_theta.err=pid_theta.SetSpeed-pid_theta.ActualSpeed;
-//    float incrementSpeed=pid_theta.Kp*(pid_theta.err-pid_theta.err_next)+pid_theta.Ki*pid_theta.err+
-//            pid_theta.Kd*(pid_theta.err-2*pid_theta.err_next+pid_theta.err_last);
-//    pid_theta.err_last=pid_theta.err_next;
-//    pid_theta.err_next=pid_theta.err;
-
-//    Delta_speed = incrementSpeed; // 90(theta)->100%, 80% theta value from -25 to 25
-    // speed>0 means clockwise, speed<0 means anticlockwise
-    // we need motor_L -> speed_L+Delta_speed, motor_R -> speed_R-Delta_speed
-//    return Delta_speed;
-
-//}
-
-
-void PID_para_show(int flag)
-{
-    pid = PID_choose(flag);
-    printf("Kp=%f,Ki=%f,Kd=%f\r\n",pid->Kp,pid->Ki,pid->Kd);
-}
-
-void PID_set(int flag,int para_flag,float para)
-{
-    pid = PID_choose(flag);
-    switch(para_flag)
-    {
-        case 1:
-            pid->Kp = para;
-            break;
-        case 2:
-            pid->Ki = para;
-            break;
-        case 3:
-            pid->Kd = para;
-            break;
-    }
-}
-
-struct _pid *PID_choose(int flag)
-{
-    struct _pid *Pid;
-    switch(flag)
-    {
-        case 1:
-            Pid = &pid1_v;
-            break;
-        case 2:
-            Pid = &pid2_v;
-            break;
-        case 3:
-            Pid = &pid_x1;
-            break;
-        case 4:
-            Pid = &pid_x2;
-            break;
-        case 5:
-            Pid = &pid_theta;
-            break;
-    }
-    return Pid;
 }
