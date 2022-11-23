@@ -42,8 +42,6 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-UART_HandleTypeDef *MY_UART;
-
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -80,6 +78,7 @@ int speed_pid_flag = 0;
 int x_pid_flag = 0;
 int theta_pid_flag = 0;
 int b_pid_flag = 0;
+int question_flag = 0; // 0 means Q1, 1 means Q2
 
 /*count pulse of motor1 and motor2*/
 int cont_value1 = 0;
@@ -156,7 +155,6 @@ int main(void)
 	
 	while(HAL_UART_Receive_IT(&huart3, rx_buf3, 1) != HAL_OK);
 	while(HAL_UART_Receive_IT(&huart1, rx_buf1, 1) != HAL_OK);
-	UART_CHANGE(1);
 	
 	Wheel(1,0);
 	Wheel(2,0);
@@ -167,104 +165,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		//printf("ok");
-		//UART_CHANGE(3);
-		//scanf("%s",T);
-		//UART_CHANGE(1);
-		//printf("1");
-		//printf("%d",rDataFlag);
-//		scanf("%s",s);
-//	if(strcmp(s,"start")==0) // start
-//	{
-//		//memset(s,'\0',strlen(s));
-//		printf("start\n");
-//		speed_pid_flag = 1;
-//		x_pid_flag = 0;
-//		theta_pid_flag = 1;
-//		b_pid_flag = 1;
-//	}
-//	else if(strcmp(s,"stop")==0) // stop
-//	{
-//		printf("stop");
-//		Wheel(1,0);	Wheel(2,0);
 
-//		speed_pid_flag = 0;
-//		x_pid_flag = 0;
-//		theta_pid_flag = 0;
-//	}
-
-//		float Kp,Ki,Kd;
-//		float data[3] = {0};
-//		int para_flag = 1;
-//		int para_set = 0;
-//		int set_flag = 1;
-//		
-//		while(para_flag)
-//		{
-//			scanf("%s",s);
-//			if(strcmp(s,"set")==0)
-//			{
-//				printf("set pid para,enter pid:");
-//				
-//				while(set_flag)
-//				{
-//					scanf("%s",s);
-//					if(strcmp(s,"pid1_v")==0)
-//					{
-//						para_set = 1;
-//					}
-//					else if(strcmp(s,"pid2_v")==0)
-//					{
-//						para_set = 2;
-//					}
-//					else if(strcmp(s,"pid1_x")==0)
-//					{
-//						para_set = 3;
-//					}
-//					else if(strcmp(s,"pid2_x")==0)
-//					{
-//						para_set = 4;
-//					}
-//					else if(strcmp(s,"pid_theta")==0)
-//					{
-//						para_set = 5;
-//					}
-//					
-//					if(para_set!=0)
-//					{
-//						set_flag = 0;
-//					}
-//				}
-
-//				printf("%s set start\n",s);
-//				
-//				printf("Kp:");
-//				scanf("%s",s);
-//				if(strcmp(s,"no")!=0)Kp = strtod(s,NULL);
-//				PID_set(para_set,1,Kp);
-//				printf("Kp set\n");
-//				
-//				printf("Ki:");
-//				scanf("%s",s);
-//				if(strcmp(s,"no")!=0)Ki = strtod(s,NULL);
-//				PID_set(para_set,2,Ki);
-//				printf("Ki set\n");
-//				
-//				printf("Kd:");
-//				scanf("%s",s);
-//				if(strcmp(s,"no")!=0)Kd = strtod(s,NULL);
-//				PID_set(para_set,3,Kd);
-//				printf("Kd set\n");
-//				
-//				PID_para_show(para_set);
-//				
-//				printf("continue?\n");
-//				scanf("%s",s);
-//				if(strcmp(s,"no")==0)para_flag=0;
-//			}
-//		}
-
-//	}
 		
     /* USER CODE END WHILE */
 
@@ -430,7 +331,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				i++;
 			}
 
-			if(i>50 && speed_pid_flag==1) // 0.5s reset i
+			if(i>100 && speed_pid_flag==1) // 0.5s reset i
 			{
 				/*return pulse count*/
 				//printf("%d, %d\r\n",pwm1,pwm2);
@@ -467,19 +368,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 }
 
-void UART_CHANGE(int uart_flag) /*printf and scanf set*/
-{
-	switch(uart_flag)
-	{
-		case 1:
-			MY_UART = &huart1;
-			break;
-		case 3:
-			MY_UART = &huart3;
-			break;
-	}
-}
-
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart == &huart3)
@@ -495,27 +383,34 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				//printf("%s",rData);
       			rDataFlag3 = 1;
 						rDataCount3 = 0;
-				
 						theta = strtod((char*)rData3,&c);
 						/*read b*/
 						b = atoi(++c);
 						if(theta_pid_flag == 1)printf("%.2f,%d\r\n",theta,b);
-//						if(theta==666)
-//						{
-//							speed_pid_flag = 0;
-//							theta_pid_flag = 0;
-//							b_pid_flag = 0;
-//							HAL_Delay(5000);
-//							speed_pid_flag = 1;
-//							theta_pid_flag = 1;
-//							b_pid_flag = 1;
-//						}
-					for(int i=0;i<40;i++)rData3[i]='\0';
+						if(theta==666)
+						{
+							//speed_pid_flag = 0;
+							theta_pid_flag = 0;
+							b_pid_flag = 0;
+							x_pid_flag = 1;
+
+							switch (question_flag)
+							{
+								case 0: // Q1
+									break;
+								case 1: // Q2
+									HAL_Delay(5000);
+									speed_pid_flag = 1;
+									theta_pid_flag = 1;
+									b_pid_flag = 1;
+									x_pid_flag = 0;
+									break;
+							}
+							
+						}
+					for(int i=0;i<40;i++)rData3[i]='\0'; // clear buffer
     		}
   		}
-
-		//HAL_UART_AbortReceive_IT(&huart3);
-		//HAL_UART_Receive_IT(&huart1, rx_buf1, 1);
 		while(HAL_UART_Receive_IT(&huart3, rx_buf3, 1) != HAL_OK);
 	}
 	
@@ -542,20 +437,23 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 							theta_pid_flag = 1;
 							b_pid_flag = 1;
 						}
-						else if(strcmp((char*)rData1,"1 ")==0) // stop
+						else if(strcmp((char*)rData1,"stop ")==0) // stop
 						{
-							printf("stop");
+							printf("stop\n");
 							Wheel(1,0);	Wheel(2,0);
 							speed_pid_flag = 0;
 							x_pid_flag = 0;
 							theta_pid_flag = 0;
+							b_pid_flag = 0;
 						}
-						for(int i=0;i<40;i++)rData1[i]='\0';
+						else if(strcmp((char*)rData1,"switch ")==0) // switch question
+						{
+							question_flag = 1 - question_flag;
+							printf("question %d\n",question_flag+1);
+						}
+						for(int i=0;i<40;i++)rData1[i]='\0'; // clear buffer
     		}
   		}
-
-		//HAL_UART_AbortReceive_IT(&huart3);
-		//HAL_UART_Receive_IT(&huart1, rx_buf1, 1);
 		while(HAL_UART_Receive_IT(&huart1, rx_buf1, 1) != HAL_OK);
 	}
 }

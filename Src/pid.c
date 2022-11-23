@@ -60,11 +60,11 @@ void PID_init(void){
     //printf("PID_init end \n");
 }
 
-int PID_position_update(int set_x,int actual_x,int flag){
-    /*setspeed and actualspeed are RPM(from -360 to 360)*/
-    /*pid.voltage is PWM(from -1000 to 1000)*/
-    /*PWM-RPM relation may not be linear,that's why PID matters*/
-    if(flag==1)
+int PID_x_update(int set_x,int actual_x,int flag){
+    /*return speed depend on x*/
+    /*x in camera is decreasing, but x from wheel is increasing,how to deal with speed?*/
+    /*set_x is made from picture of camera, actual_x*/
+    if(flag==1) // determine wheel
     {
         pid = &pid_x1;
     }
