@@ -49,7 +49,6 @@
 /* USER CODE BEGIN PV */
 
 char *c;
-char s[40];
 uint8_t rx_buf3[1];
 uint8_t rx_buf1[1];
 //uint8_t rxbuf3[1];
@@ -74,17 +73,15 @@ int b_speed = 0;
 const int round_pulse = 390;
 
 /*pid flag*/
-int speed_pid_flag = 0;
 int x_pid_flag = 0;
 int theta_pid_flag = 0;
 int b_pid_flag = 0;
+int setspeed_flag = 1;
 int question_flag = 0; // 0 means Q1, 1 means Q2
 
 /*count pulse of motor1 and motor2*/
 int cont_value1 = 0;
 int cont_value2 = 0;
-int x_cont1 = 0;
-int x_cont2 = 0;
 
 /* USER CODE END PV */
 
@@ -99,12 +96,12 @@ void Wheel(int num,int pwm);
 /* USER CODE BEGIN 0 */
 int fgetc(FILE *f) {      
 	uint8_t ch = 0;
-	HAL_UART_Receive(MY_UART,&ch,1,0xffff);
+	HAL_UART_Receive(&huart1,&ch,1,0xffff);
 	return ch;
 }
 
 int fputc(int ch, FILE *f) {      
-	HAL_UART_Transmit(MY_UART,(uint8_t *)&ch,1,0xffff);
+	HAL_UART_Transmit(&huart1,(uint8_t *)&ch,1,0xffff);
 	return ch;
 }
 
@@ -165,8 +162,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -302,12 +297,12 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 		static int i = 0;
-		static int cont_last1 = 0;
-		static int cont_last2 = 0;
 		static float speed1 = 0;
 		static float speed2 = 0;
 		static int x_speed1 = 0;
 		static int x_speed2 = 0;
+		static int x_cont1 = 0;
+		static int x_cont2 = 0;
 		static int pwm1 = 0;
 		static int pwm2 = 0;
 
@@ -315,57 +310,74 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {	
 			/*setspeed PID processing*/
 			/*Delta_speed>0 means clockwise*/
-			if(speed_pid_flag==1) // speed pid avaliable(T=0.01s)
-			{
-				/*present speed*/
-				speed1 = (cont_value1-cont_last1)*6000.0/round_pulse;
-				speed2 = (cont_value2-cont_last2)*6000.0/round_pulse;
-
-				cont_last1 = cont_value1;
-				cont_last2 = cont_value2;
-
-				pwm1 = PID_speed_update(setspeed1+theta_speed-b_speed+x_speed1,speed1,pwm1,1);
-				pwm2 = PID_speed_update(setspeed2-theta_speed+b_speed+x_speed2,speed2,pwm2,2);
-				Wheel(2,pwm2);
-				Wheel(1,pwm1);
-				i++;
-			}
-
-			if(i>100 && speed_pid_flag==1) // 0.5s reset i
-			{
-				/*return pulse count*/
-				//printf("%d, %d\r\n",pwm1,pwm2);
-
-				cont_value1 = 0;	cont_value2 = 0;
-				cont_last1 = 0;		cont_last2 = 0;
-				i=0;
-			}
-			if(i%12==0 && speed_pid_flag==1) // 0.12s theta pid (Using "%" matters!)
+			if(i%10==0) // 0.10s theta pid (Using "%" matters!)
 			{
 				if(theta_pid_flag==1)
 				{
 					theta_speed = PID_theta_update(theta);
 				}
+				else
+				{
+					theta_speed = 0;
+				}
 				if(b_pid_flag==1)
 				{
 					b_speed = PID_b_update(b,theta);
 				}
-			}
-			if(i%5==0 && speed_pid_flag==1 && x_pid_flag==1) // 0.05s x pid (Using "%" matters!)
-			{
-					x_speed1 = PID_position_update(x_set,x_cont1,1);
-					x_speed2 = PID_position_update(x_set,x_cont2,2);
+				else
+				{
+					b_speed = 0;
+				}
 			}
 
-			if(speed_pid_flag==0) // stop
+			if(i%8==0) // 0.08s x pid (Using "%" matters!)
 			{
-				cont_value1 = 0;	cont_value2 = 0;
-				cont_last1 = 0;		cont_last2 = 0;
-				Wheel(1,0);
-				Wheel(2,0);
+				if(x_pid_flag==1)
+				{
+					x_speed1 = PID_position_update(x_set,cont_value1,1);
+					x_speed2 = PID_position_update(x_set,cont_value2,2);
+				}
+				else
+				{
+					x_speed1 = 0;
+					x_speed2 = 0;
+				}
+			}
+
+			if(i%2==0) // speed pid avaliable(T=0.02s)
+			{
+				if(x_pid_flag==0)
+				{
+					/*present speed*/
+					speed1 = cont_value1*60.0/(0.02*round_pulse);
+					speed2 = cont_value2*60.0/(0.02*round_pulse);
+					cont_value1 = 0;
+					cont_value2 = 0;
+				}
+				else
+				{
+					/*present speed*/
+					speed1 = (cont_value1-x_cont1)*60.0/(0.02*round_pulse);
+					speed2 = (cont_value2-x_cont2)*60.0/(0.02*round_pulse);
+					x_cont1 = cont_value1;
+					x_cont2 = cont_value2;
+				}
+
+				pwm1 = PID_speed_update(setspeed1*setspeed_flag+theta_speed-b_speed+x_speed1,speed1,pwm1,1);
+				pwm2 = PID_speed_update(setspeed2*setspeed_flag-theta_speed+b_speed+x_speed2,speed2,pwm2,2);
+				Wheel(1,pwm1);
+				Wheel(2,pwm2);
+			}
+
+			if(i>100) // 0.5s reset i
+			{
+				/*return pulse count*/
+				//printf("%d, %d\r\n",pwm1,pwm2);
 				i=0;
 			}
-		}
+
+			i++;
+	}
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -384,12 +396,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       			rDataFlag3 = 1;
 						rDataCount3 = 0;
 						theta = strtod((char*)rData3,&c);
+
 						/*read b*/
 						b = atoi(++c);
 						if(theta_pid_flag == 1)printf("%.2f,%d\r\n",theta,b);
 						if(theta==666)
 						{
-							//speed_pid_flag = 0;
+							setspeed_flag = 0;
 							theta_pid_flag = 0;
 							b_pid_flag = 0;
 							x_pid_flag = 1;
@@ -400,7 +413,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 									break;
 								case 1: // Q2
 									HAL_Delay(5000);
-									speed_pid_flag = 1;
+									setspeed_flag = 1;
 									theta_pid_flag = 1;
 									b_pid_flag = 1;
 									x_pid_flag = 0;
@@ -432,7 +445,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 						{
 							//memset(s,'\0',strlen(s));
 							printf("start\n");
-							speed_pid_flag = 1;
+							setspeed_flag = 1;
 							x_pid_flag = 0;
 							theta_pid_flag = 1;
 							b_pid_flag = 1;
@@ -440,8 +453,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 						else if(strcmp((char*)rData1,"stop ")==0) // stop
 						{
 							printf("stop\n");
-							Wheel(1,0);	Wheel(2,0);
-							speed_pid_flag = 0;
+							setspeed_flag = 0;
 							x_pid_flag = 0;
 							theta_pid_flag = 0;
 							b_pid_flag = 0;

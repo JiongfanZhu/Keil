@@ -37,14 +37,14 @@ void PID_init(void){
     pid_x1.SetSpeed=0.0;     pid_x1.ActualSpeed=0.0;
     pid_x1.err=0.0;          pid_x1.err_last=0.0;
     pid_x1.err_next=0.0;     pid_x1.voltage=0.0;
-    pid_x1.integral=0.0;     pid_x1.Kp=1;
-    pid_x1.Ki=1;           pid_x1.Kd=1;
+    pid_x1.integral=0.0;     pid_x1.Kp=0.05;
+    pid_x1.Ki=0.3;           pid_x1.Kd=1;
 
     pid_x2.SetSpeed=0.0;     pid_x2.ActualSpeed=0.0;
     pid_x2.err=0.0;          pid_x2.err_last=0.0;
     pid_x2.err_next=0.0;     pid_x2.voltage=0.0;
-    pid_x2.integral=0.0;     pid_x2.Kp=1;
-    pid_x2.Ki=1;           pid_x2.Kd=1;
+    pid_x2.integral=0.0;     pid_x2.Kp=0.05;
+    pid_x2.Ki=0.3;           pid_x2.Kd=1;
 
     pid_theta.SetSpeed=0.0; pid_theta.ActualSpeed=0.0;
     pid_theta.err=0.0;      pid_theta.err_last=0.0;
@@ -83,7 +83,7 @@ int PID_x_update(int set_x,int actual_x,int flag){
     pid->err_last=pid->err_next;
     pid->err_next=pid->err;
 
-    int speed_x= (int)incrementSpeed/20.0; //x->speed
+    int speed_x= (int)incrementSpeed; //x->speed
 
 //    /*check the bound*/
 //    if(pwm_ave>1000)
