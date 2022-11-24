@@ -31,4 +31,5 @@ pid_control_test/main.o: ..\Src\main.c ..\Inc\main.h \
   ..\Inc\usart.h ..\Inc\gpio.h \
   D:\Keil\ARM\ARMCLANG\Bin\..\include\stdio.h \
   D:\Keil\ARM\ARMCLANG\Bin\..\include\stdlib.h \
-  D:\Keil\ARM\ARMCLANG\Bin\..\include\string.h ..\Inc\pid.h
+  D:\Keil\ARM\ARMCLANG\Bin\..\include\string.h ..\Inc\pid.h \
+  D:\Keil\ARM\ARMCLANG\Bin\..\include\math.h

@@ -28,6 +28,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "pid.h"
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,11 +64,14 @@ int rDataFlag3 = 0;
 /*rpm and x of motor(from -360 to 360)*/
 int setspeed1 = 160;
 int setspeed2 = 160;
-int x_set = 0;
+int x_set1 = 0;
+int x_set2 = 0;
 float theta = 0;
 int b = 200;
 int theta_speed = 0;
 int b_speed = 0;
+int string_flag = 0;
+int location[4] = {0};
 
 /*pulses of each round*/
 const int round_pulse = 390;
@@ -334,8 +338,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			{
 				if(x_pid_flag==1)
 				{
-					x_speed1 = PID_position_update(x_set,cont_value1,1);
-					x_speed2 = PID_position_update(x_set,cont_value2,2);
+					x_speed1 = PID_x_update(x_set1,cont_value1,1);
+					x_speed2 = PID_x_update(x_set2,cont_value2,2);
 				}
 				else
 				{
@@ -361,6 +365,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					speed2 = (cont_value2-x_cont2)*60.0/(0.02*round_pulse);
 					x_cont1 = cont_value1;
 					x_cont2 = cont_value2;
+					if(speed1 == 0 && speed2 == 0)x_pid_flag = 0;
 				}
 
 				pwm1 = PID_speed_update(setspeed1*setspeed_flag+theta_speed-b_speed+x_speed1,speed1,pwm1,1);
@@ -395,16 +400,39 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				//printf("%s",rData);
       			rDataFlag3 = 1;
 						rDataCount3 = 0;
-						theta = strtod((char*)rData3,&c);
-
-						/*read b*/
-						b = atoi(++c);
-						if(theta_pid_flag == 1)printf("%.2f,%d\r\n",theta,b);
-						if(theta==666)
+				
+						
+						if(strcmp((char*)rData3,"stop ")==0) // start
 						{
+							string_flag = 1;
 							setspeed_flag = 0;
 							theta_pid_flag = 0;
 							b_pid_flag = 0;
+						}
+						if(string_flag == 1)
+						{
+							location[0] = atoi((char*)rData3);
+							char* p = strchr((char*)rData3,' ');
+							p++;
+							location[1] = atoi((char*)p);
+							string_flag++;
+						}
+						else if(string_flag == 2)
+						{
+							location[2] = atoi((char*)rData3);
+							char* p = strchr((char*)rData3,' ');
+							p++;
+							location[3] = atoi((char*)p);
+							string_flag=0;
+							
+							double theta0 = 180/3.1415926*atan((1.0*location[0]-1.0*location[2])/(1.0*location[1]-1.0*location[3]));
+							int mean_x = (location[0]+location[2])/2;
+							int mean_y = (location[1]+location[3])/2;
+							x_set1 = (mean_y+(mean_x-150)+theta0/2)*10;
+							x_set2 = (mean_y-(mean_x-150)-theta0/2)*10;
+							
+							printf("set1=%d,set2=%d",x_set1,x_set2);
+							
 							x_pid_flag = 1;
 
 							switch (question_flag)
@@ -419,7 +447,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 									x_pid_flag = 0;
 									break;
 							}
+						}
+						else if(string_flag == 3)
+						{
 							
+						}
+						else
+						{
+							theta = strtod((char*)rData3,&c);
+							/*read b*/
+							b = atoi(++c);
+							if(theta_pid_flag == 1)printf("%.2f,%d\r\n",theta,b);
 						}
 					for(int i=0;i<40;i++)rData3[i]='\0'; // clear buffer
     		}
