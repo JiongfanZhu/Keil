@@ -324,6 +324,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				{
 					theta_speed = 0;
 				}
+				
 				if(b_pid_flag==1)
 				{
 					b_speed = PID_b_update(b,theta);
@@ -367,7 +368,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					x_cont2 = cont_value2;
 					if(speed1 == 0 && speed2 == 0)x_pid_flag = 0;
 				}
-
 				pwm1 = PID_speed_update(setspeed1*setspeed_flag+theta_speed-b_speed+x_speed1,speed1,pwm1,1);
 				pwm2 = PID_speed_update(setspeed2*setspeed_flag-theta_speed+b_speed+x_speed2,speed2,pwm2,2);
 				Wheel(1,pwm1);
@@ -380,7 +380,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				//printf("%d, %d\r\n",pwm1,pwm2);
 				i=0;
 			}
-
 			i++;
 	}
 }
@@ -401,14 +400,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       			rDataFlag3 = 1;
 						rDataCount3 = 0;
 				
-						
-						if(strcmp((char*)rData3,"stop ")==0) // start
-						{
-							string_flag = 1;
-							setspeed_flag = 0;
-							theta_pid_flag = 0;
-							b_pid_flag = 0;
-						}
 						if(string_flag == 1)
 						{
 							location[0] = atoi((char*)rData3);
@@ -435,7 +426,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 							
 							x_pid_flag = 1;
 
-							switch (question_flag)
+							switch(question_flag)// restart or stop depend on the question
 							{
 								case 0: // Q1
 									break;
@@ -448,11 +439,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 									break;
 							}
 						}
-						else if(string_flag == 3)
+						
+						if(strcmp((char*)rData3,"stop ")==0) // start
 						{
-							
+							string_flag = 1;
+							setspeed_flag = 0;
+							theta_pid_flag = 0;
+							b_pid_flag = 0;
 						}
-						else
+						else if(string_flag==0)
 						{
 							theta = strtod((char*)rData3,&c);
 							/*read b*/
