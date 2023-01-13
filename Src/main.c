@@ -386,7 +386,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if(huart == &huart3)
+	if(huart == &huart3) // theta and b message
 	{
 		//DataGet1(rx_buf1[0]);
 	
@@ -398,7 +398,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			{  
 				//printf("%s",rData);
       			rDataFlag3 = 1;
-						rDataCount3 = 0;
+				rDataCount3 = 0;
 				
 						if(string_flag == 1)
 						{
@@ -440,7 +440,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 							}
 						}
 						
-						if(strcmp((char*)rData3,"stop ")==0) // start
+						if(strcmp((char*)rData3,"stop ")==0) // find stop flag
 						{
 							string_flag = 1;
 							setspeed_flag = 0;
@@ -460,7 +460,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		while(HAL_UART_Receive_IT(&huart3, rx_buf3, 1) != HAL_OK);
 	}
 	
-	if(huart == &huart1)
+	if(huart == &huart1) // user message
 	{
 		//DataGet1(rx_buf1[0]);
 	
@@ -472,7 +472,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			{  
 				//printf("%s",rData);
       			rDataFlag1 = 1;
-						rDataCount1 = 0;
+				rDataCount1 = 0;
 						
 						if(strcmp((char*)rData1,"start ")==0) // start
 						{
@@ -495,6 +495,48 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 						{
 							question_flag = 1 - question_flag;
 							printf("question %d\n",question_flag+1);
+						}
+						else // para set
+						{
+							/*send message like: "pv1=20 " space matter! */
+							int flag_pid = 0;
+							int flag_para = 0;
+							if(strstr((char*)rData1,"p")!=NULL)
+							{
+								flag_para = 1;
+							}
+							else if(strstr((char*)rData1,"i")!=NULL)
+							{
+								flag_para = 2;
+							}
+							else if(strstr((char*)rData1,"d")!=NULL)
+							{
+								flag_para = 3;
+							}
+							
+							if(strstr((char*)rData1,"v1")!=NULL)
+							{
+								flag_pid = 1;
+							}
+							else if(strstr((char*)rData1,"v2")!=NULL)
+							{
+								flag_pid = 2;
+							}
+							else if(strstr((char*)rData1,"theta")!=NULL)
+							{
+								flag_pid = 3;
+							}
+							else if(strstr((char*)rData1,"b")!=NULL)
+							{
+								flag_pid = 4;
+							}
+
+							if(flag_pid!=0 && flag_para!=0)
+							{
+								char *pp = strchr((char*)rData1,'=');
+								float para = atof(++pp);
+								PID_para(flag_pid,flag_para,para);
+							}
 						}
 						for(int i=0;i<40;i++)rData1[i]='\0'; // clear buffer
     		}

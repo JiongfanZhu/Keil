@@ -3,8 +3,6 @@
 #include "math.h"
 #include "string.h"
 
-struct _pid* PID_choose(int flag);
-
 struct _pid{
     float SetSpeed;            //定义设定值
     float ActualSpeed;        //定义实际值
@@ -84,16 +82,6 @@ int PID_x_update(int set_x,int actual_x,int flag){
     pid->err_next=pid->err;
 
     int speed_x= (int)incrementSpeed; //x->speed
-
-//    /*check the bound*/
-//    if(pwm_ave>1000)
-//    {
-//        pwm_ave=1000;
-//    }
-//    else if(pwm_ave<-1000)
-//    {
-//        pwm_ave=-1000;
-//    }
     
     return speed_x;
 }
@@ -172,14 +160,6 @@ int PID_theta_update(float theta){
 
 int PID_b_update(int b,float theta){
 
-    /*this function return Delta_rpm*/
-    /*theta from -90 to 90*/
-
-    /*update set and actual*/
-    //pid_theta.SetSpeed=setspeed;
-
-    //if(theta>15 || theta<-15)return 0;
-
     if(b>0 && b<400)
     {
         pid_b.ActualSpeed=b;
@@ -189,26 +169,16 @@ int PID_b_update(int b,float theta){
         pid_b.ActualSpeed=pid_b.SetSpeed-pid_b.err_last;
     }
 		
-
     /*calculate output Delta_theta*/
     pid_b.err=pid_b.SetSpeed-pid_b.ActualSpeed;
-		
-//		if(pid_b.err<-60 || pid_b.err>60)
-//		{
-//			return 0;
-//		}
-    
-    pid_b.integral+=pid_b.err;
 
     /*do not int big err*/
-		//
-    if(pid_b.err>40 || pid_b.err<-40 || pid_b.err*pid_b.err_last<=0)pid_b.integral=0;
+    if(pid_b.err<40 && pid_b.err>-40 && pid_b.err*pid_b.err_last>0)pid_b.integral+=pid_b.err;
 
     pid_b.voltage=pid_b.Kp*pid_b.err+pid_b.Ki*pid_b.integral+pid_b.Kd*(pid_b.err-pid_b.err_last);
-		//((pid_b.err-pid_b.err_last>-50 && pid_b.err-pid_b.err_last<50)?1:0)
     pid_b.err_last=pid_b.err;
 
-    pid_b.voltage = pid_b.voltage; // 320 -> 1000(pwm)
+    pid_b.voltage = pid_b.voltage;
     /*if(pid_b.voltage>60)
     {
         pid_b.voltage=60;
@@ -220,4 +190,36 @@ int PID_b_update(int b,float theta){
     // speed<0 means clockwise, speed>0 means anticlockwise
     // we need motor_L -> speed_L-Delta_speed, motor_R -> speed_R+Delta_speed
     return pid_b.voltage;
+}
+
+void PID_para(int flag_pid,int flag_para,float para)
+{
+    /*PID parameter adjustment*/
+    switch (flag_pid)
+    {
+    case 1: // pid1_v
+        pid = &pid1_v;
+        break;
+    case 2: // pid2_v
+        pid = &pid2_v;
+        break;
+    case 3: // pid_theta
+        pid = &pid_theta;
+        break;
+    case 4: // pid_b
+        pid = &pid_b;
+        break;
+    }
+    switch (flag_para)
+    {
+    case 1:
+        pid->Kp = para;
+        break;
+    case 2:
+        pid->Ki = para;
+        break;
+    case 3:
+        pid->Kd = para;
+        break;
+    }
 }
