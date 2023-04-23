@@ -62,8 +62,7 @@ int rDataFlag1 = 0;
 int rDataFlag3 = 0;
 
 /*rpm and x of motor(from -360 to 360)*/
-int setspeed1 = 160;
-int setspeed2 = 160;
+int setspeed = 160;
 int x_set1 = 0;
 int x_set2 = 0;
 float theta = 0;
@@ -92,7 +91,6 @@ int cont_value2 = 0;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void UART_CHANGE(int uart_flag);
 void Wheel(int num,int pwm);
 /* USER CODE END PFP */
 
@@ -154,8 +152,8 @@ int main(void)
 	HAL_TIM_IC_Start_IT(&htim1,TIM_CHANNEL_2); //tim1 channel2 enable
 	PID_init();
 	
-	while(HAL_UART_Receive_IT(&huart3, rx_buf3, 1) != HAL_OK);
-	while(HAL_UART_Receive_IT(&huart1, rx_buf1, 1) != HAL_OK);
+	while(HAL_UART_Receive_IT(&huart3, rx_buf3, 1) != HAL_OK); // berry pie
+	while(HAL_UART_Receive_IT(&huart1, rx_buf1, 1) != HAL_OK); // user bluetooth
 	
 	Wheel(1,0);
 	Wheel(2,0);
@@ -368,8 +366,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					x_cont2 = cont_value2;
 					if(speed1 == 0 && speed2 == 0)x_pid_flag = 0;
 				}
-				pwm1 = PID_speed_update(setspeed1*setspeed_flag+theta_speed-b_speed+x_speed1,speed1,pwm1,1);
-				pwm2 = PID_speed_update(setspeed2*setspeed_flag-theta_speed+b_speed+x_speed2,speed2,pwm2,2);
+				pwm1 = PID_speed_update(setspeed*setspeed_flag+theta_speed-b_speed+x_speed1,speed1,pwm1,1);
+				pwm2 = PID_speed_update(setspeed*setspeed_flag-theta_speed+b_speed+x_speed2,speed2,pwm2,2);
 				Wheel(1,pwm1);
 				Wheel(2,pwm2);
 			}
@@ -388,34 +386,32 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart == &huart3) // theta and b message
 	{
-		//DataGet1(rx_buf1[0]);
-	
 		rData3[rDataCount3]=rx_buf3[0];
   		if(rx_buf3[0]!=0x00)
 		{
     		rDataCount3++;
     		if(rx_buf3[0]==0x0A)// (ascii)0x0A = "\n"
 			{  
-				//printf("%s",rData);
       			rDataFlag3 = 1;
 				rDataCount3 = 0;
 				
-						if(string_flag == 1)
+						if(string_flag == 1) // receive first location
 						{
 							location[0] = atoi((char*)rData3);
-							char* p = strchr((char*)rData3,' ');
+							char* p = strchr((char*)rData3,' '); // x and y are divided by space
 							p++;
 							location[1] = atoi((char*)p);
 							string_flag++;
 						}
-						else if(string_flag == 2)
+						else if(string_flag == 2) // // receive second location
 						{
 							location[2] = atoi((char*)rData3);
 							char* p = strchr((char*)rData3,' ');
 							p++;
 							location[3] = atoi((char*)p);
-							string_flag=0;
-							
+							string_flag=0; // reset flag
+
+							// calculate parameter
 							double theta0 = 180/3.1415926*atan((1.0*location[0]-1.0*location[2])/(1.0*location[1]-1.0*location[3]));
 							int mean_x = (location[0]+location[2])/2;
 							int mean_y = (location[1]+location[3])/2;
@@ -496,6 +492,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 							question_flag = 1 - question_flag;
 							printf("question %d\n",question_flag+1);
 						}
+						else if(strstr((char*)rData1,"speed")!=NULL) // speed change
+						{
+							char *pp = strchr((char*)rData1,'=');
+							setspeed = atoi(++pp);
+							printf("setspeed=%d\n",setspeed);
+						}
 						else // para set
 						{
 							/*send message like: "pv1=20 " space matter! */
@@ -531,7 +533,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 								flag_pid = 4;
 							}
 
-							if(flag_pid!=0 && flag_para!=0)
+							if(flag_pid!=0 && flag_para!=0) // change parameter when all flags set
 							{
 								char *pp = strchr((char*)rData1,'=');
 								float para = atof(++pp);
