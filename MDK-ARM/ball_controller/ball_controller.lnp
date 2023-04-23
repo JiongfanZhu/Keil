@@ -1,0 +1,28 @@
+--cpu Cortex-M3
+"ball_controller\startup_stm32f103xb.o"
+"ball_controller\pid.o"
+"ball_controller\main.o"
+"ball_controller\gpio.o"
+"ball_controller\tim.o"
+"ball_controller\usart.o"
+"ball_controller\stm32f1xx_it.o"
+"ball_controller\stm32f1xx_hal_msp.o"
+"ball_controller\stm32f1xx_hal_gpio_ex.o"
+"ball_controller\stm32f1xx_hal_tim.o"
+"ball_controller\stm32f1xx_hal_tim_ex.o"
+"ball_controller\stm32f1xx_hal.o"
+"ball_controller\stm32f1xx_hal_rcc.o"
+"ball_controller\stm32f1xx_hal_rcc_ex.o"
+"ball_controller\stm32f1xx_hal_gpio.o"
+"ball_controller\stm32f1xx_hal_dma.o"
+"ball_controller\stm32f1xx_hal_cortex.o"
+"ball_controller\stm32f1xx_hal_pwr.o"
+"ball_controller\stm32f1xx_hal_flash.o"
+"ball_controller\stm32f1xx_hal_flash_ex.o"
+"ball_controller\stm32f1xx_hal_exti.o"
+"ball_controller\stm32f1xx_hal_uart.o"
+"ball_controller\system_stm32f1xx.o"
+--library_type=microlib --strict --scatter "ball_controller\ball_controller.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "ball_controller.map" -o ball_controller\ball_controller.axf
