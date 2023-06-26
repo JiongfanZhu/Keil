@@ -105,13 +105,14 @@ int main(void)
             //UARTCharPutNonBlocking(UART5_BASE, 'h'); //树莓派串口测试
             //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 2); //红灯测试
             //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 4); //绿灯测试
+
+            GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 4); //绿灯测试
             if(!(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==GPIO_PIN_3))
             {
                 SysCtlDelay(SysCtlClockGet()*0.05/3);//延时消抖
                 if(!(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==GPIO_PIN_3))
                 {
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 2); //红灯测试
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 0); //绿灯测试
+                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 2); //红灯测试
                 }
                 while(!(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==GPIO_PIN_3)); //待按键释放
                 SysCtlDelay(SysCtlClockGet()*0.05/3);//延时消抖
@@ -332,7 +333,7 @@ void Wheel_set(float pwm,int num)
         switch(num) //对应GPIO口写入实现正反转
         {
             case 1:
-                GPIOPinWrite(GPIO_PORTF_BASE,Wheel_1,dir);
+                GPIOPinWrite(GPIO_PORTF_BASE,Wheel_1,dir*8);
                 break;
             default:
                 GPIOPinWrite(GPIO_PORTF_BASE,Wheel_2,1-dir);
