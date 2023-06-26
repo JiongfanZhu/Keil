@@ -1,0 +1,9 @@
+"./hand_hand.obj"
+"./main.obj"
+"./my_uart.obj"
+"./pid.obj"
+"./tm4c123gh6pm_startup_ccs.obj"
+"./uartstdio.obj"
+"../tm4c123gh6pm.cmd"
+-llibc.a
+-l"D:/TivaWare/driverlib/ccs/Debug/driverlib.lib"
