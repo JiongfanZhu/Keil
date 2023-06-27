@@ -19,6 +19,10 @@ uint8_t turn_task_flag = 0; //转向闭环开启指示
 uint8_t task_flag = 0; //闭环完成指示
 uint8_t target_flag = 0; //目标点确定
 
+#define TURN_X 400
+#define ROUND_X 100
+#define STRAIGHT_X 100
+
 void StatusReset(void)
 {
     //status_hand的几种状态
@@ -36,7 +40,7 @@ void StatusReset(void)
     x_task_flag = 0;
     turn_task_flag = 0;
     LED_flag = 0; //熄灭
-
+    UARTCharPutNonBlocking(UART5_BASE, 'r'); //向树莓派发送复位信息
 }
 
 void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
@@ -130,8 +134,8 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                     case 0: //直线
                         if(x_task_flag == 0) //未开启直线闭环
                         {
-                            x_set1 = 100;
-                            x_set2 = 100;
+                            x_set1 = STRAIGHT_X;
+                            x_set2 = STRAIGHT_X;
                             x_pid_flag = 1;
                             x_task_flag = 1;
                         }
@@ -144,15 +148,15 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                     case 1: //左转
                         if(x_task_flag == 0) //未开启直线闭环
                         {
-                            x_set1 = 100;
-                            x_set2 = 100;
+                            x_set1 = STRAIGHT_X;
+                            x_set2 = STRAIGHT_X;
                             x_pid_flag = 1;
                             x_task_flag = 1;
                         }
                         else if(turn_task_flag == 0) //未开启转向闭环
                         {
-                            x_set1 = -100;
-                            x_set2 = 100;
+                            x_set1 = -ROUND_X;
+                            x_set2 = ROUND_X;
                             x_pid_flag = 1;
                             turn_task_flag = 1;
                             //x_task_flag = 0; //还需要执行一段直线闭环
@@ -166,15 +170,15 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                     case 2: //右转
                         if(x_task_flag == 0) //未开启直线闭环
                         {
-                            x_set1 = 100;
-                            x_set2 = 100;
+                            x_set1 = STRAIGHT_X;
+                            x_set2 = STRAIGHT_X;
                             x_pid_flag = 1;
                             x_task_flag = 1;
                         }
                         else if(turn_task_flag == 0) //未开启转向闭环
                         {
-                            x_set1 = 100;
-                            x_set2 = -100;
+                            x_set1 = ROUND_X;
+                            x_set2 = -ROUND_X;
                             x_pid_flag = 1;
                             turn_task_flag = 1;
                             //x_task_flag = 0; //还需要执行一段直线闭环
@@ -189,8 +193,8 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                         if(turn_task_flag == 0 && route_flag == 0) //未开启转向闭环,且药品已卸除
                         {
                             LED_flag = 0; //熄灭
-                            x_set1 = 400;
-                            x_set2 = -400;
+                            x_set1 = TURN_X;
+                            x_set2 = -TURN_X;
                             x_pid_flag = 1;
                             turn_task_flag = 1;
                         }

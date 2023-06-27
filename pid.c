@@ -58,7 +58,7 @@ void PID_init(void){
     //printf("PID_init end \n");
 }
 
-int PID_x_update(int set_x,int actual_x,int flag){
+float PID_x_update(float set_x,uint32_t actual_x,int flag){
     /*return speed depend on x*/
     /*x in camera is decreasing, but x from wheel is increasing,how to deal with speed?*/
     /*set_x is made from picture of camera, actual_x*/
@@ -81,12 +81,12 @@ int PID_x_update(int set_x,int actual_x,int flag){
     pid->err_last=pid->err_next;
     pid->err_next=pid->err;
 
-    int speed_x= (int)incrementSpeed; //x->speed
+    //int speed_x= (int)incrementSpeed; //x->speed
     
-    return speed_x;
+    return incrementSpeed;
 }
 
-int PID_speed_update(int setspeed,float actualspeed,int volt,int flag)
+float PID_speed_update(float setspeed,float actualspeed,float volt,int flag)
 {
     /*setspeed and actualspeed are RPM(from -360 to 360)*/
     /*pid.voltage is PWM(from -1000 to 1000)*/
@@ -110,7 +110,7 @@ int PID_speed_update(int setspeed,float actualspeed,int volt,int flag)
     pid->err_last=pid->err_next;
     pid->err_next=pid->err;
 
-    volt+=(int)(incrementSpeed*25/9); // 360(v)->1000(rpm)
+    volt+=incrementSpeed*25/9; // 360(v)->1000(rpm)
 
     /*check the bound*/
     if(volt>1000)
@@ -125,7 +125,7 @@ int PID_speed_update(int setspeed,float actualspeed,int volt,int flag)
     return volt;
 }
 
-int PID_theta_update(float theta){
+float PID_theta_update(float theta){
 
     /*this function return Delta_rpm*/
     /*theta from -90 to 90*/
@@ -158,7 +158,7 @@ int PID_theta_update(float theta){
     return pid_theta.voltage;
 }
 
-int PID_b_update(float b){
+float PID_b_update(float b){
 
     if(b>0 && b<400)
     {

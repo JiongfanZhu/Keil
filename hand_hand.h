@@ -21,9 +21,9 @@ extern int theta_pid_flag;
 extern int setspeed_flag;
 extern uint8_t LED_flag;
 
-extern int x_set1;
-extern int x_set2;
-extern float speed1;
+extern float x_set1; //位移闭环设定值
+extern float x_set2;
+extern float speed1; //读取当前实际速度
 extern float speed2;
 extern uint8_t rData5[30];
 

@@ -40,6 +40,7 @@ float Get_Data(void);
 #define LED_green GPIO_PIN_2
 #define Drug GPIO_PIN_3
 #define round_pulse 390 //编码盘每圈脉冲数
+#define K_round 300 //pwm变换系数
 
 int x_pid_flag = 0; //初始关闭xpid
 int theta_pid_flag = 1;
@@ -47,13 +48,13 @@ int b_pid_flag = 1;
 int setspeed_flag = 1;
 
 float b = 200; //与pid初始化中预设b一致
-int setspeed = 160;
-int x_set1 = 0;
-int x_set2 = 0;
+float setspeed = 160;
+float x_set1 = 0;
+float x_set2 = 0;
 float theta = 0;
 
-int theta_speed = 0;
-int b_speed = 0;
+float theta_speed = 0;
+float b_speed = 0;
 float speed1 = 0;
 float speed2 = 0;
 
@@ -86,11 +87,14 @@ int main(void)
     Sysint_init();
     GPIO_init();
 
+    Wheel_set(0,1);
+    Wheel_set(0,2);
+    //PWMPulseWidthSet(PWM1_BASE,PWM_OUT_5,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_2)+1)*fabs(0.2));
+    //PWMPulseWidthSet(PWM1_BASE,PWM_OUT_6,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_3)+1)*fabs(0.7));
 
-    PWMPulseWidthSet(PWM1_BASE,PWM_OUT_5,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_2)+1)*fabs(0.2));
-    PWMPulseWidthSet(PWM1_BASE,PWM_OUT_6,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_3)+1)*fabs(0.7));
     while(1)
     {
+        /*药品检测*/
         if(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==0)
         {
             route_flag = 1;
@@ -99,7 +103,8 @@ int main(void)
         {
             route_flag = 0;
         }
-        if(test_flag == 1)
+
+        if(test_flag == 1) //测试程序
         {
             //UARTprintf("test\r\n"); //用户串口测试
             //UARTCharPutNonBlocking(UART5_BASE, 'h'); //树莓派串口测试
@@ -114,8 +119,8 @@ int main(void)
                 {
                     GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 2); //红灯测试
                 }
-                while(!(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==GPIO_PIN_3)); //待按键释放
-                SysCtlDelay(SysCtlClockGet()*0.05/3);//延时消抖
+                //while(!(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==GPIO_PIN_3)); //待按键释放
+                //SysCtlDelay(SysCtlClockGet()*0.05/3);//延时消抖
             }
             //SysCtlDelay(SysCtlClockGet()/3);
         }
@@ -227,9 +232,9 @@ void QEI_init()
     //使能QEI0,QEI1
     QEIEnable(QEI0_BASE);
     QEIEnable(QEI1_BASE);
-    //设置QEI0,QEI1模块当前位置计数器值为0
-    QEIPositionSet(QEI0_BASE,0);
-    QEIPositionSet(QEI1_BASE,0);
+    //设置QEI0,QEI1模块当前位置计数器值为0x7fffffff
+    QEIPositionSet(QEI0_BASE,0x7fffffff);
+    QEIPositionSet(QEI1_BASE,0x7fffffff);
 }
 
 void USART_init()
@@ -297,7 +302,7 @@ void GPIO_init()
     GPIOPadConfigSet(GPIO_PORTE_BASE,GPIO_PIN_3,GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
 }
 
-void Wheel_set(float pwm,int num)
+void Wheel_set(float pwm,int num) //pwm从-1到1
 {
     uint8_t pwm_out = 0;
     uint8_t pwm_gen = 0;
@@ -347,10 +352,10 @@ void Wheel_set(float pwm,int num)
 void TIMER0_IRQHandler() //10ms一次中断
 {
     static int i = 0;
-    static int x_speed1 = 0;
-    static int x_speed2 = 0;
-    static int pwm1 = 0;
-    static int pwm2 = 0;
+    static float x_speed1 = 0;
+    static float x_speed2 = 0;
+    static float pwm1 = 0;
+    static float pwm2 = 0;
 
     //获取中断状态
     uint32_t status=TimerIntStatus(TIMER0_BASE, true);
@@ -358,7 +363,8 @@ void TIMER0_IRQHandler() //10ms一次中断
     TimerIntClear(TIMER0_BASE,status);
         /*setspeed PID processing*/
         /*Delta_speed>0 means clockwise*/
-        if(uart_flag == 1 && test_flag == 0) //有串口数据更新且不处于测试状态
+        //if(uart_flag == 1 && test_flag == 0) //有串口数据更新且不处于测试状态
+        if(test_flag == 0) //不处于测试状态->保证10ms的定时触发握手协议
         {
             if(status_hand != 0) //处于模拟握手协议中
             {
@@ -396,8 +402,8 @@ void TIMER0_IRQHandler() //10ms一次中断
                 }
                 pwm1 = PID_speed_update(setspeed*setspeed_flag+theta_pid_flag*theta_speed-b_pid_flag*b_speed+x_pid_flag*x_speed1,speed1,pwm1,1);
                 pwm2 = PID_speed_update(setspeed*setspeed_flag-theta_pid_flag*theta_speed+b_pid_flag*b_speed+x_pid_flag*x_speed2,speed2,pwm2,2);
-                Wheel_set(pwm1/300.0,1);
-                Wheel_set(pwm2/300.0,2);
+                Wheel_set(pwm1/K_round,1);
+                Wheel_set(pwm2/K_round,2);
             }
 
             if(i>100) // 0.5s reset i
@@ -407,7 +413,7 @@ void TIMER0_IRQHandler() //10ms一次中断
                 i=0;
             }
             i++;
-            uart_flag = 0;
+            //uart_flag = 0;
         }
 }
 
@@ -433,6 +439,10 @@ void UART1_Handler() //用户串口
                                UARTprintf("hello\r\n");
                                //UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
                                //StatusDeal(2); //开启小车任务
+                           }
+                           else if(strcmp((char*)rData1,"reset ") == 0) //复位
+                           {
+                               StatusReset();
                            }
                            //else if(rData1[0]>='0' && rData1[0]<='9')    //目标点选择
                            //{
