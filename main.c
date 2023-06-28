@@ -87,6 +87,8 @@ int main(void)
     Sysint_init();
     GPIO_init();
 
+    StatusReset();
+
     Wheel_set(0,1);
     Wheel_set(0,2);
     //PWMPulseWidthSet(PWM1_BASE,PWM_OUT_5,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_2)+1)*fabs(0.2));
@@ -417,7 +419,7 @@ void TIMER0_IRQHandler() //10ms一次中断
         }
 }
 
-void UART1_Handler() //用户串口
+void UART1_Handler() //双车通信串口
 {
     //读取中断状态
     uint32_t status=UARTIntStatus(UART1_BASE,true);
@@ -436,23 +438,22 @@ void UART1_Handler() //用户串口
                         //for(int i=0;i<rDataCount0;i++) UARTprintf("UART rData0[%d] =%c\r\n",i,rData0[i]);
                            if(test_flag == 1)
                            {
-                               UARTprintf("hello\r\n");
+                               //UARTprintf("hello\r\n");
                                //UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
                                //StatusDeal(2); //开启小车任务
                            }
-                           else if(strcmp((char*)rData1,"reset ") == 0) //复位
+                           else if(rData1[0]>='1' && rData1[0]<='8') //数字代表目标点信息
                            {
-                               StatusReset();
+                                StatusDeal(2); //题目选择
                            }
-                           //else if(rData1[0]>='0' && rData1[0]<='9')    //目标点选择
+                           else if(rData1[0]>='a' && rData1[0]<='z') //小写字母代表
+                           {
+                                
+                           }
+                           //else // para set
                            //{
-                           //   UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
-                           //    StatusDeal(2); //开启小车任务
+                           //    USART_PID_Adjust();//数据解析和参数赋值函数
                            //}
-                           else // para set
-                           {
-                               USART_PID_Adjust();//数据解析和参数赋值函数
-                           }
                            memset(rData1,0,sizeof(rData1)); //清空缓存数组
                            rDataCount1=0; //清空接收长度
                 }
@@ -489,7 +490,7 @@ void UART5_Handler() //树莓派串口
                 }
                 else if(strcmp((char*)rData5,"s ") == 0|| strcmp((char*)rData5,"X ") == 0 || status_hand != 0) //进入或处于模拟握手协议中
                 {
-                    StatusDeal(1);
+                    StatusDeal(1); //树莓派通信
                 }
 
                 memset(rData5,0,sizeof(rData5)); //清空缓存数组

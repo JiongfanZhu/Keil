@@ -19,6 +19,11 @@ uint8_t turn_task_flag = 0; //转向闭环开启指示
 uint8_t task_flag = 0; //闭环完成指示
 uint8_t target_flag = 0; //目标点确定标识
 
+uint8_t uart_flag = 0; //双车通信标识,标记母车是否已经经过路口
+uint8_t car_flag = 0; //母车转向标识(0左转,1右转)
+uint8_t question_flag = 0; //题目标识
+uint8_t mom_car = 0; //母车目标点记录
+
 #define TURN_X 400
 #define ROUND_X 100
 #define STRAIGHT_X 100
@@ -31,7 +36,8 @@ void StatusReset(void)
     //2:停止状态/树莓派等待状态
     //3:闭环动作状态
     //4:用户指令等待状态/初始状态
-    status_hand = 4;
+    //5:自动巡航状态
+    status_hand = 5;
     x_pid_flag = 0;
     route_len = 0; //清空决策数
     memset(route,0,sizeof(route)); //清空决策记录
@@ -41,7 +47,11 @@ void StatusReset(void)
     turn_task_flag = 0;
     LED_flag = 0; //熄灭
     target_flag = 0;
-    UARTCharPutNonBlocking(UART5_BASE, 'r'); //向树莓派发送复位信息
+    uart_flag = 0;
+    car_flag = 0;
+    question_flag = 0;
+    mom_car = 0;
+    UARTCharPutNonBlocking(UART5_BASE, 'R'); //向树莓派发送复位信息
 }
 
 /*
@@ -54,15 +64,35 @@ void StatusReset(void)
     "X ":树莓派已记录目标点;
 
 树莓派接受指令集:
-    "d ":树莓派进行识别;
-    "r ":树莓派进行巡线;
+    'd':树莓派进行识别;
+    'r':树莓派进行巡线;
+    'R':树莓派进行复位;
+
+message含义:
+    0:定时中断进入;
+    1:树莓派串口信息进入;
+    2:母车目标信息(题目选择);
 
 PS:树莓派向小车发送信号后,总是回到指令等待状态
    但初始化时树莓派的状态还需要商榷(?)
 */
 
+int UART_block(uint8_t message) //查看双车通信信息
+{
+    if(message == 2) //题目选择
+    {
+        mom_car = rData1[0] - '0';
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
 {
+    if(UART_block(message) == 0);
+
     switch(status_hand)
     {
         case 0:     //正常运行状态
@@ -142,9 +172,7 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             x_task_flag = 0; //重置闭环有关标识
             turn_task_flag = 0;
             task_flag = 0;
-
             break;
-
         case 3:     //闭环动作状态
             if(speed1 == 0 && speed2 == 0) //停止说明已完成上一闭环任务或从状态2转换至3
             {

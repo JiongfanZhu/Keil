@@ -29,6 +29,7 @@ extern uint8_t rData5[30];
 
 void StatusReset(void); //状态重置
 void StatusDeal(uint8_t message); //状态更改与任务分配
+int UART_block(uint8_t message); //双车通信的屏蔽程序
 
 
 
