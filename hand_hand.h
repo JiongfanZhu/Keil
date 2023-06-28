@@ -20,6 +20,7 @@ extern int b_pid_flag;
 extern int theta_pid_flag;
 extern int setspeed_flag;
 extern uint8_t LED_flag;
+extern uint8_t question;
 
 extern float x_set1; //位移闭环设定值
 extern float x_set2;

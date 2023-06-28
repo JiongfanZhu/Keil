@@ -74,6 +74,8 @@ uint8_t test_flag = 1;      //测试模式
 uint8_t uart_flag = 0;      //巡线信息标识位
 uint8_t LED_flag = 0;       //0不亮,1亮红灯,2亮绿灯
 
+uint8_t question = 0; //题目选择,默认为基础部分0,提高(1)1,提高(2)2
+
 char * endptr;
 
 int main(void)
@@ -87,15 +89,15 @@ int main(void)
     Sysint_init();
     GPIO_init();
 
+    StatusReset();
+
     Wheel_set(0,1);
     Wheel_set(0,2);
-    //PWMPulseWidthSet(PWM1_BASE,PWM_OUT_5,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_2)+1)*fabs(0.2));
-    //PWMPulseWidthSet(PWM1_BASE,PWM_OUT_6,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_3)+1)*fabs(0.7));
 
     while(1)
     {
         /*药品检测*/
-        if(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==0)
+        if(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)!=GPIO_PIN_3) //PF3有上拉,不等说明有药品放置
         {
             route_flag = 1;
         }
@@ -124,22 +126,23 @@ int main(void)
             }
             //SysCtlDelay(SysCtlClockGet()/3);
         }
-        else
+        else if(question == 0)
         {
             switch(LED_flag)
             {
                 case 0: //熄灭
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 0);
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 0);
+                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 0);
                     break;
                 case 1: //红灯亮
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 2);
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 0);
+                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 2);
                     break;
                 case 2: //绿灯亮
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 0);
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 4);
+                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 4);
             }
+        }
+        else
+        {
+            GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 0);
         }
     }
 
@@ -417,7 +420,7 @@ void TIMER0_IRQHandler() //10ms一次中断
         }
 }
 
-void UART1_Handler() //用户串口
+void UART1_Handler() //用户/双车通信串口
 {
     //读取中断状态
     uint32_t status=UARTIntStatus(UART1_BASE,true);
@@ -431,24 +434,23 @@ void UART1_Handler() //用户串口
         rData1[rDataCount1-1]=rx_buf1;
                     if(rx_buf1==0x20)// (ascii)0x14 = " "
                     {
-                        //printf("%s",rData);
-                        //UARTprintf("RXLen=%d\r\n",rDataCount0);
-                        //for(int i=0;i<rDataCount0;i++) UARTprintf("UART rData0[%d] =%c\r\n",i,rData0[i]);
                            if(test_flag == 1)
                            {
                                UARTprintf("hello\r\n");
                                //UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
-                               //StatusDeal(2); //开启小车任务
                            }
-                           else if(strcmp((char*)rData1,"reset ") == 0) //复位
+                           else if(strcmp((char*)rData1,"Q1 ") == 0) //提高部分第1问
                            {
-                               StatusReset();
+                                question = 1;
                            }
-                           //else if(rData1[0]>='0' && rData1[0]<='9')    //目标点选择
-                           //{
-                           //   UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
-                           //    StatusDeal(2); //开启小车任务
-                           //}
+                           else if(strcmp((char*)rData1,"Q2 ") == 0) //提高部分第2问
+                           {
+                                question = 2;
+                           }
+                           else if(strcmp((char*)rData1,"ok ") == 0) //子车释放阻塞信号
+                           {
+                                StatusDeal(3);
+                           }
                            else // para set
                            {
                                USART_PID_Adjust();//数据解析和参数赋值函数
@@ -479,6 +481,14 @@ void UART5_Handler() //树莓派串口
                 {
                     UARTprintf("berrypie\r\n");
                 }
+                else if(rData5[0]>='1' && rData5[0]<='8' && rData5[1] == ' ') //单个数字,目标病房信息
+                {
+                    StatusDeal(2);
+                }
+                else if(strcmp((char*)rData5,"s ") == 0 || status_hand != 0) //循迹停止或有识别信息
+                {
+                    StatusDeal(1);
+                }
                 else if(status_hand == 0)   //循迹信息,"theta?b "
                 {
                     theta = strtof(rData5,&endptr);
@@ -486,10 +496,6 @@ void UART5_Handler() //树莓派串口
                     b = strtod(endptr,NULL);
                     endptr = rData5;
                     uart_flag = 1;
-                }
-                else if(strcmp((char*)rData5,"s ") == 0|| strcmp((char*)rData5,"X ") == 0 || status_hand != 0) //进入或处于模拟握手协议中
-                {
-                    StatusDeal(1);
                 }
 
                 memset(rData5,0,sizeof(rData5)); //清空缓存数组
