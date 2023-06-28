@@ -446,9 +446,13 @@ void UART1_Handler() //双车通信串口
                            {
                                 StatusDeal(2); //题目选择
                            }
-                           else if(rData1[0]>='a' && rData1[0]<='z') //小写字母代表
+                           else if(rData1[0]>='a' && rData1[0]<='z') //小写字母代表母车出现转向
                            {
-                                
+                                StatusDeal(3);
+                           }
+                           else if(rData1[0]>='A' && rData1[0]<='Z') //大写字母代表母车卸药
+                           {
+                                StatusDeal(4);
                            }
                            //else // para set
                            //{
