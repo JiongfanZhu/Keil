@@ -26,6 +26,7 @@ extern float x_set2;
 extern float speed1; //读取当前实际速度
 extern float speed2;
 extern uint8_t rData5[30];
+extern uint8_t rData1[30];
 
 void StatusReset(void); //状态重置
 void StatusDeal(uint8_t message); //状态更改与任务分配

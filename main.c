@@ -71,7 +71,7 @@ int rDataFlag1 = 0;
 extern uint8_t status_hand;
 uint8_t route_flag = 0;     //药品状态标志位
 uint8_t test_flag = 1;      //测试模式
-uint8_t uart_flag = 0;      //巡线信息标识位
+uint8_t line_flag = 0;      //巡线信息标识位
 uint8_t LED_flag = 0;       //0不亮,1亮红灯,2亮绿灯
 
 char * endptr;
@@ -365,7 +365,6 @@ void TIMER0_IRQHandler() //10ms一次中断
     TimerIntClear(TIMER0_BASE,status);
         /*setspeed PID processing*/
         /*Delta_speed>0 means clockwise*/
-        //if(uart_flag == 1 && test_flag == 0) //有串口数据更新且不处于测试状态
         if(test_flag == 0) //不处于测试状态->保证10ms的定时触发握手协议
         {
             if(status_hand != 0) //处于模拟握手协议中
@@ -415,7 +414,6 @@ void TIMER0_IRQHandler() //10ms一次中断
                 i=0;
             }
             i++;
-            //uart_flag = 0;
         }
 }
 
@@ -490,7 +488,7 @@ void UART5_Handler() //树莓派串口
                     endptr++;
                     b = strtod(endptr,NULL);
                     endptr = rData5;
-                    uart_flag = 1;
+                    line_flag = 1;
                 }
                 else if(strcmp((char*)rData5,"s ") == 0|| strcmp((char*)rData5,"X ") == 0 || status_hand != 0) //进入或处于模拟握手协议中
                 {

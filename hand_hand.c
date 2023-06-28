@@ -121,7 +121,7 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
         case 1:     //正在停止状态,需要检查是否已经停下,停止不使用闭环
             if(speed1 == 0 && speed2 ==0) //已停止
             {
-                counter_corner++;
+                count_corner++;
                 status_hand = 2; //修改为停止状态2
                 recognize_flag = 0; //识别请求复位
                 if(route_flag == 1) //有药品,即送药过程
@@ -286,11 +286,11 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                 {
                     question_flag = 2;
                 }
-                counter_corner = 0;
+                count_corner = 0;
             }
 
             /*药品完成装载且树莓派已完成识别或母车完成卸药*/
-            if((route_flag == 1 && question_flag == 1)||(mom_drug == 1 && question_flag = 2))
+            if((route_flag == 1 && question_flag == 1)||(mom_drug == 1 && question_flag == 2))
             {
                 status_hand = 0; //修改为正常运行状态
                 /*开启巡线对应pid*/
