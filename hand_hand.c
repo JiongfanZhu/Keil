@@ -7,7 +7,7 @@
 
 #include "hand_hand.h"
 
-uint8_t status_hand = 0;    //单片机当前状态
+uint8_t status_hand = 4;    //单片机当前状态
 uint8_t route[10] = {0};    //小车路口决策记录(0直行,1左转,2右转)
 int route_len = 0;      //小车路口经过次数
 extern uint8_t route_flag;     //药品状态标志位
@@ -17,9 +17,9 @@ uint8_t turn_route_flag = 0; //闭环指示(0直行,1左转,2右转,3掉头)
 uint8_t x_task_flag = 0; //直线闭环开启指示
 uint8_t turn_task_flag = 0; //转向闭环开启指示
 uint8_t task_flag = 0; //闭环完成指示
-uint8_t target_flag = 0; //目标点确定标识
-uint8_t next_q = -1; //被子车信息阻塞的下一状态
-uint8_t stop_count = 1; //距离被子车阻塞的路口数
+uint8_t target = 0; //目标点标识
+uint8_t next_q = 0; //被子车信息阻塞的下一状态
+int stop_count = 1; //距离被子车阻塞的路口数
 uint8_t turn_flag = 0; //是否完成第一次转向
 
 #define TURN_X 400
@@ -44,10 +44,10 @@ void StatusReset(void)
     x_task_flag = 0;
     turn_task_flag = 0;
     LED_flag = 0; //熄灭
-    target_flag = 0;
-    next_q = -1;
+    target = 0;
+    next_q = 0;
     stop_count = 1;
-    turn_flag = 0
+    turn_flag = 0;
     UARTCharPutNonBlocking(UART5_BASE, 'R'); //向树莓派发送复位信息
 }
 
@@ -98,7 +98,6 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
         case 1:     //正在停止状态,需要检查是否已经停下,停止不使用闭环
             if(speed1 == 0 && speed2 ==0) //已停止
             {
-                //x_pid_flag = 0;
                 status_hand = 2; //修改为停止状态2
                 recognize_flag = 0; //识别请求复位
                 if(route_flag == 1) //有药品,即送药过程
@@ -200,7 +199,6 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                             task_flag = 1;
                         }
                         break;
-
                     case 1: //左转
                         if(x_task_flag == 0) //未开启直线闭环
                         {
@@ -214,14 +212,12 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                             x_set1 += -ROUND_X;
                             x_set2 += ROUND_X;
                             turn_task_flag = 1;
-                            //x_task_flag = 0; //还需要执行一段直线闭环
                         }
                         else //闭环完成
                         {
                             task_flag = 1;
                         }
                         break;
-
                     case 2: //右转
                         if(x_task_flag == 0) //未开启直线闭环
                         {
@@ -242,7 +238,6 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                             task_flag = 1;
                         }
                         break;
-
                     case 3: //掉头,仅在到达药房时执行这一分支
                         if(turn_task_flag == 0 && route_flag == 0) //未开启转向闭环,且药品已卸除
                         {
@@ -278,10 +273,10 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
         case 4:     //指令等待状态/初始状态
             if(message == 2) //树莓派完成识别
             {
-                target_flag = 1;
-                UARTprintf("%d ",rData5[0]-'0'); //发送母车病房信息
+                target = rData5[0]-'0';
+                UARTprintf("%d ",target); //发送母车病房信息
             }
-            if(target_flag == 1 && route_flag == 1) //药品完成装载且树莓派已完成识别
+            if(target != 0 && route_flag == 1) //药品完成装载且树莓派已完成识别
             {
                 status_hand = 0; //修改为正常运行状态
                 /*开启巡线对应pid*/
@@ -295,11 +290,8 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             if(message == 3) //阻塞信号被释放
             {
                 status_hand = next_q;
-                next_q = -1;
+                next_q = 0;
             }
             break;
     }
 }
-
-
-

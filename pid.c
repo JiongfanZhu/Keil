@@ -58,7 +58,8 @@ void PID_init(void){
     //printf("PID_init end \n");
 }
 
-float PID_x_update(float set_x,uint32_t actual_x,int flag){
+float PID_x_update(float set_x,uint32_t actual_x,int flag) //增量式
+{
     /*return speed depend on x*/
     /*x in camera is decreasing, but x from wheel is increasing,how to deal with speed?*/
     /*set_x is made from picture of camera, actual_x*/
@@ -86,7 +87,7 @@ float PID_x_update(float set_x,uint32_t actual_x,int flag){
     return incrementSpeed;
 }
 
-float PID_speed_update(float setspeed,float actualspeed,float volt,int flag)
+float PID_speed_update(float setspeed,float actualspeed,float volt,int flag) //增量式
 {
     /*setspeed and actualspeed are RPM(from -360 to 360)*/
     /*pid.voltage is PWM(from -1000 to 1000)*/
@@ -125,7 +126,8 @@ float PID_speed_update(float setspeed,float actualspeed,float volt,int flag)
     return volt;
 }
 
-float PID_theta_update(float theta){
+float PID_theta_update(float theta) //位置式
+{
 
     /*this function return Delta_rpm*/
     /*theta from -90 to 90*/
@@ -144,9 +146,8 @@ float PID_theta_update(float theta){
     /*calculate output Delta_theta*/
     pid_theta.err=-pid_theta.ActualSpeed;
     pid_theta.integral+=pid_theta.err;
-		
-		//
-    if(pid_theta.err>=18 || pid_theta.err<=-18 || pid_theta.err*pid_theta.err_last<=0)pid_theta.integral=0;
+
+    if(pid_theta.err>=18 || pid_theta.err<=-18 || pid_theta.err*pid_theta.err_last<=0)pid_theta.integral=0; //取消大角度积分
 
     pid_theta.voltage=pid_theta.Kp*pid_theta.err+pid_theta.Ki*pid_theta.integral+pid_theta.Kd*(pid_theta.err-pid_theta.err_last);
 		//((pid_theta.err-pid_theta.err_last>-20 && pid_theta.err-pid_theta.err_last<20)?1:0)
@@ -158,7 +159,8 @@ float PID_theta_update(float theta){
     return pid_theta.voltage;
 }
 
-float PID_b_update(float b){
+float PID_b_update(float b) //增量式
+{
 
     if(b>0 && b<400)
     {
@@ -173,7 +175,7 @@ float PID_b_update(float b){
     pid_b.err=pid_b.SetSpeed-pid_b.ActualSpeed;
 
     /*do not int big err*/
-    if(pid_b.err<40 && pid_b.err>-40 && pid_b.err*pid_b.err_last>0)pid_b.integral+=pid_b.err;
+    if(pid_b.err<40 && pid_b.err>-40 && pid_b.err*pid_b.err_last>0)pid_b.integral+=pid_b.err; //小截距积分
 
     pid_b.voltage=pid_b.Kp*pid_b.err+pid_b.Ki*pid_b.integral+pid_b.Kd*(pid_b.err-pid_b.err_last);
     pid_b.err_last=pid_b.err;

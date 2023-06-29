@@ -418,6 +418,10 @@ void TIMER0_IRQHandler() //10ms一次中断
             i++;
             //uart_flag = 0;
         }
+        else
+        {
+            UARTprintf("%d  %d\r\n",QEIPositionGet(QEI0_BASE),QEIPositionGet(QEI1_BASE)); //传回电机速度数据
+        }
 }
 
 void UART1_Handler() //用户/双车通信串口
@@ -479,7 +483,7 @@ void UART5_Handler() //树莓派串口
             {
                 if(test_flag == 1)  //测试模式
                 {
-                    UARTprintf("berrypie\r\n");
+                    //UARTprintf("berrypie\r\n");
                 }
                 else if(rData5[0]>='1' && rData5[0]<='8' && rData5[1] == ' ') //单个数字,目标病房信息
                 {
