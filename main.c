@@ -69,10 +69,14 @@ int rDataFlag5 = 0;
 int rDataFlag1 = 0;
 
 extern uint8_t status_hand;
+extern uint8_t mom_drug;    //母车卸药标识
+extern uint8_t mom_decision;
+extern uint8_t decision_flag;
+
 uint8_t route_flag = 0;     //药品状态标志位
 uint8_t test_flag = 1;      //测试模式
 uint8_t line_flag = 0;      //巡线信息标识位
-uint8_t LED_flag = 0;       //0不亮,1亮红灯,2亮绿灯
+uint8_t LED_flag = 0;       //0不亮,1亮红灯,2亮黄灯
 
 char * endptr;
 
@@ -91,8 +95,6 @@ int main(void)
 
     Wheel_set(0,1);
     Wheel_set(0,2);
-    //PWMPulseWidthSet(PWM1_BASE,PWM_OUT_5,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_2)+1)*fabs(0.2));
-    //PWMPulseWidthSet(PWM1_BASE,PWM_OUT_6,(PWMGenPeriodGet(PWM1_BASE, PWM_GEN_3)+1)*fabs(0.7));
 
     while(1)
     {
@@ -131,16 +133,13 @@ int main(void)
             switch(LED_flag)
             {
                 case 0: //熄灭
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 0);
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 0);
+                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 0);
                     break;
                 case 1: //红灯亮
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 2);
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 0);
+                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 2);
                     break;
-                case 2: //绿灯亮
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 0);
-                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 4);
+                case 2: //黄灯亮
+                    GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 4);
             }
         }
     }
@@ -440,17 +439,29 @@ void UART1_Handler() //双车通信串口
                                //UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
                                //StatusDeal(2); //开启小车任务
                            }
-                           else if(rData1[0]>='1' && rData1[0]<='8') //数字代表目标点信息
-                           {
-                                StatusDeal(2); //题目选择
-                           }
-                           else if(rData1[0]>='a' && rData1[0]<='z') //小写字母代表母车出现转向
-                           {
-                                StatusDeal(3);
-                           }
-                           else if(rData1[0]>='A' && rData1[0]<='Z') //大写字母代表母车卸药
+                           else if(strcmp((char*)rData1,"ok ") == 0) //阻塞信息释放
                            {
                                 StatusDeal(4);
+                           }
+                           else if(rData1[0]>='1' && rData1[0]<='8' && rData1[1]==' ') //数字代表目标点信息
+                           {
+                                StatusDeal(2);
+                           }
+                           else if(rData1[0]=='r' && rData1[1]==' ') //小写字母r代表母车出现右转
+                           {
+                                mom_decision = 1;
+                                decision_flag = 1;
+                           }
+                           else if(rData1[0]=='l' && rData1[1]==' ') //小写字母l代表母车出现左转
+                           {
+                                mom_decision = 0;
+                                decision_flag = 1;
+                           }
+                           else if(rData1[0]=='X' && rData1[1]==' ') //大写字母X代表母车卸药
+                           {
+                                //StatusDeal(3);
+                                mom_drug = 1; //母车卸药置位
+                                LED_flag = 0; //熄灭
                            }
                            //else // para set
                            //{
