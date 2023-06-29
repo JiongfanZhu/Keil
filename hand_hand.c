@@ -151,14 +151,14 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                 {
                     route_len--; //删去一个长度,当前route_len对应最后一个结点信息,准备出栈
                     turn_route_flag = 3;
-                    if(question == 0)LED_flag = 1; //红灯亮(基础部分)
+                    LED_flag = 1; //红灯亮(基础部分)
                 }
                 status_hand = 3; //修改为闭环动作状态3
             }
             else if(route_len == -1) //经过所有记录路口并停止->到起点了
             {
                 status_hand = 4; //等待,要求小车面向药房
-                if(question == 0)LED_flag = 2; //绿灯亮
+                LED_flag = 2; //绿灯亮
             }
             else if(message == 0 && recognize_flag == 0) //无串口信息且未发送识别请求->回家过程中
             {
