@@ -14,7 +14,7 @@ uint8_t turn_route_flag = 0; //闭环指示(0直行,1左转,2右转,3掉头)
 uint8_t x_task_flag = 0; //直线闭环开启指示
 uint8_t turn_task_flag = 0; //转向闭环开启指示
 uint8_t task_flag = 0; //闭环完成指示
-uint8_t target_flag = 0; //目标点确定标识
+uint8_t target = 0; //目标点标识
 
 uint8_t question = 0; //题目选择
 uint8_t mom_car = 0; //母车病房信息
@@ -118,7 +118,7 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             if(message == 1) //有串口信息
             {
                 status_hand = 3; //闭环状态3
-                if(decision_flag == 1 && question == 1) //母车转向信息有效(第一问)
+                if(decision_flag == 1 && question == 1 && auto_count < 0) //母车转向信息有效,且自动巡航结束(第一问)
                 {
                     turn_route_flag = 2 - mom_decision; //与母车转向相反
                     decision_flag = 0;
@@ -153,7 +153,6 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                     }
                     else if(auto_count == 0) //巡航结束
                     {
-                        auto_count--; //巡航路口-1
                         turn_route_flag = 3; //掉头
                     }
                 }
@@ -297,7 +296,8 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                         next_q = 0;
                         status_hand = 5;
                         LED_flag = 2; //亮黄灯
-                        auto_count--; //巡航路口-1
+                        auto_count--; //巡航路口-1,此时<0,防止再次触发相关函数
+                        x_pid_flag = 0;
                     }
                     else
                     {
@@ -315,8 +315,16 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
         case 4:     //指令等待模式
             if(message == 1 && rData5[0]>='1' && rData5[0]<='8' && rData5[1] == ' ') //子车病房信息
             {
-                target_flag = rData5[0] - '0'; //提取信息
-                if(mom_car == target_flag) //同一病房
+                target = rData5[0] - '0'; //提取信息
+            }
+            else if(message == 2)
+            {
+                mom_car = rData1[0]; //母车信息
+            }
+
+            if(target != 0 && mom_car != 0) //信息均有效
+            {
+                if(mom_car == target) //同一病房
                 {
                     question = 1;
                     UARTprintf("Q1 ");
@@ -326,11 +334,9 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                     question = 2;
                     UARTprintf("Q2 ");
                 }
+                target = 0;
             }
-            else if(message == 2)
-            {
-                mom_car = rData1[0]; //母车信息
-            }
+                
 
             /*满足提高部分的发车条件*/
             if((route_flag == 1 && question == 1)||(mom_drug == 1 && question == 2))
@@ -349,6 +355,14 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             {
                 status_hand = next_q;
                 next_q = 0;
+                if(status_hand == 0)
+                {
+                    UARTCharPutNonBlocking(UART5_BASE, 'r');
+                    x_pid_flag = 0;
+                    b_pid_flag = 1;
+                    theta_pid_flag = 1;
+                    setspeed_flag = 1;
+                }
             }
             break;
     }
