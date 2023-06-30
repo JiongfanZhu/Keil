@@ -35,14 +35,14 @@ void PID_init(void){
     pid_x1.SetSpeed=0.0;     pid_x1.ActualSpeed=0.0;
     pid_x1.err=0.0;          pid_x1.err_last=0.0;
     pid_x1.err_next=0.0;     pid_x1.voltage=0.0;
-    pid_x1.integral=0.0;     pid_x1.Kp=0.05;
-    pid_x1.Ki=0.3;           pid_x1.Kd=1;
+    pid_x1.integral=0.0;     pid_x1.Kp=1;
+    pid_x1.Ki=0.05;           pid_x1.Kd=0.01;
 
     pid_x2.SetSpeed=0.0;     pid_x2.ActualSpeed=0.0;
     pid_x2.err=0.0;          pid_x2.err_last=0.0;
     pid_x2.err_next=0.0;     pid_x2.voltage=0.0;
-    pid_x2.integral=0.0;     pid_x2.Kp=0.05;
-    pid_x2.Ki=0.3;           pid_x2.Kd=1;
+    pid_x2.integral=0.0;     pid_x2.Kp=1;
+    pid_x2.Ki=0.05;           pid_x2.Kd=0.01;
 
     pid_theta.SetSpeed=0.0; pid_theta.ActualSpeed=0.0;
     pid_theta.err=0.0;      pid_theta.err_last=0.0;
@@ -50,7 +50,7 @@ void PID_init(void){
     pid_theta.Kp=1.15;      pid_theta.Ki=0.01;
     pid_theta.Kd=0.35;
 
-    pid_b.SetSpeed=200.0; pid_b.ActualSpeed=0.0;
+    pid_b.SetSpeed=150.0; pid_b.ActualSpeed=0.0;
     pid_b.err=0.0;      pid_b.err_last=0.0;
     pid_b.voltage=0.0;  pid_b.integral=0.0;
     pid_b.Kp=0.20;      pid_b.Ki=0.002;
@@ -58,7 +58,8 @@ void PID_init(void){
     //printf("PID_init end \n");
 }
 
-float PID_x_update(float set_x,uint32_t actual_x,int flag){
+float PID_x_update(float set_x,int actual_x,int flag) //位移式
+{
     /*return speed depend on x*/
     /*x in camera is decreasing, but x from wheel is increasing,how to deal with speed?*/
     /*set_x is made from picture of camera, actual_x*/
@@ -76,17 +77,20 @@ float PID_x_update(float set_x,uint32_t actual_x,int flag){
 
     /*calculate output speed*/
     pid->err=pid->SetSpeed-pid->ActualSpeed;
-    float incrementSpeed=pid->Kp*(pid->err-pid->err_next)+pid->Ki*pid->err+
-        pid->Kd*(pid->err-2*pid->err_next+pid->err_last);
-    pid->err_last=pid->err_next;
-    pid->err_next=pid->err;
+    //float incrementSpeed=pid->Kp*(pid->err-pid->err_next)+pid->Ki*pid->err+
+    //    pid->Kd*(pid->err-2*pid->err_next+pid->err_last);
+    //pid->err_last=pid->err_next;
+    //pid->err_next=pid->err;
+
+    pid->voltage=pid->Kp*pid->err+pid->Ki*pid->integral+pid->Kd*(pid->err-pid->err_last);
+    pid->err_last=pid->err;
 
     //int speed_x= (int)incrementSpeed; //x->speed
     
-    return incrementSpeed;
+    return pid->voltage;
 }
 
-float PID_speed_update(float setspeed,float actualspeed,float volt,int flag)
+float PID_speed_update(float setspeed,float actualspeed,float volt,int flag) //位移式
 {
     /*setspeed and actualspeed are RPM(from -360 to 360)*/
     /*pid.voltage is PWM(from -1000 to 1000)*/
@@ -105,27 +109,32 @@ float PID_speed_update(float setspeed,float actualspeed,float volt,int flag)
     pid->ActualSpeed=actualspeed;
 
     /*calculate output voltage*/
-    pid->err=pid->SetSpeed-pid->ActualSpeed;
-    float incrementSpeed=pid->Kp*(pid->err-pid->err_next)+pid->Ki*pid->err+pid->Kd*(pid->err-2*pid->err_next+pid->err_last);
-    pid->err_last=pid->err_next;
-    pid->err_next=pid->err;
+    //pid->err=pid->SetSpeed-pid->ActualSpeed;
+    //float incrementSpeed=pid->Kp*(pid->err-pid->err_next)+pid->Ki*pid->err+pid->Kd*(pid->err-2*pid->err_next+pid->err_last);
+    //pid->err_last=pid->err_next;
+    //pid->err_next=pid->err;
 
-    volt+=incrementSpeed*25/9; // 360(v)->1000(rpm)
+    //volt+=incrementSpeed*25/9; // 360(v)->1000(rpm)
+
+    pid->err=pid->SetSpeed-pid->ActualSpeed;
+    pid->voltage=pid->Kp*pid->err+pid->Ki*pid->integral+pid->Kd*(pid->err-pid->err_last);
+    pid->err_last=pid->err;
 
     /*check the bound*/
-    if(volt>1000)
+    if(pid->voltage>1000)
     {
-        volt=1000;
+        pid->voltage=1000;
     }
-    else if(volt<-1000)
+    else if(pid->voltage<-1000)
     {
-        volt=-1000;
+        pid->voltage=-1000;
     }
     
-    return volt;
+    return pid->voltage;
 }
 
-float PID_theta_update(float theta){
+float PID_theta_update(float theta) //位置式
+{
 
     /*this function return Delta_rpm*/
     /*theta from -90 to 90*/
@@ -144,9 +153,8 @@ float PID_theta_update(float theta){
     /*calculate output Delta_theta*/
     pid_theta.err=-pid_theta.ActualSpeed;
     pid_theta.integral+=pid_theta.err;
-		
-		//
-    if(pid_theta.err>=18 || pid_theta.err<=-18 || pid_theta.err*pid_theta.err_last<=0)pid_theta.integral=0;
+
+    if(pid_theta.err>=18 || pid_theta.err<=-18 || pid_theta.err*pid_theta.err_last<=0)pid_theta.integral=0; //取消大角度积分
 
     pid_theta.voltage=pid_theta.Kp*pid_theta.err+pid_theta.Ki*pid_theta.integral+pid_theta.Kd*(pid_theta.err-pid_theta.err_last);
 		//((pid_theta.err-pid_theta.err_last>-20 && pid_theta.err-pid_theta.err_last<20)?1:0)
@@ -158,7 +166,8 @@ float PID_theta_update(float theta){
     return pid_theta.voltage;
 }
 
-float PID_b_update(float b){
+float PID_b_update(float b) //增量式
+{
 
     if(b>0 && b<400)
     {
@@ -173,7 +182,7 @@ float PID_b_update(float b){
     pid_b.err=pid_b.SetSpeed-pid_b.ActualSpeed;
 
     /*do not int big err*/
-    if(pid_b.err<40 && pid_b.err>-40 && pid_b.err*pid_b.err_last>0)pid_b.integral+=pid_b.err;
+    if(pid_b.err<40 && pid_b.err>-40 && pid_b.err*pid_b.err_last>0)pid_b.integral+=pid_b.err; //小截距积分
 
     pid_b.voltage=pid_b.Kp*pid_b.err+pid_b.Ki*pid_b.integral+pid_b.Kd*(pid_b.err-pid_b.err_last);
     pid_b.err_last=pid_b.err;

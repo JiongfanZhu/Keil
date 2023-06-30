@@ -305,8 +305,8 @@ void GPIO_init()
 
 void Wheel_set(float pwm,int num) //pwm从-1到1
 {
-    uint8_t pwm_out = 0;
-    uint8_t pwm_gen = 0;
+    uint32_t pwm_out = 0;
+    uint32_t pwm_gen = 0;
     uint8_t dir = 0;
     switch(num)
     {
@@ -318,31 +318,42 @@ void Wheel_set(float pwm,int num) //pwm从-1到1
             pwm_out = PWM_OUT_6;
             pwm_gen = PWM_GEN_3;
     }
-    if(pwm > 1)
+    if(pwm > 0.99)
     {
-        pwm = 1;
+        pwm = 0.99;
     }
-    else if(pwm < -1)
+    else if(pwm < -0.99)
     {
-        pwm = -1;
+        pwm = -0.99;
     }
 
     if(pwm == 0)
     {
         PWMGenDisable(PWM1_BASE,pwm_gen); //pwm为0时不能设置为0,应关闭通道
+        switch(num) //对应GPIO口写入实现正反转
+         {
+                    case 1:
+                        PWMOutputState(PWM1_BASE,PWM_OUT_5_BIT,false);
+                        break;
+                    default:
+                        PWMOutputState(PWM1_BASE,PWM_OUT_6_BIT,false);
+                        break;
+                }
     }
     else
     {
-        if(pwm>0)dir = 1; // forward
-
+        dir = pwm>0;
+        pwm = (pwm*(1.5-num)<0)?(1-fabs(pwm)):pwm;
 
         switch(num) //对应GPIO口写入实现正反转
         {
             case 1:
-                GPIOPinWrite(GPIO_PORTF_BASE,Wheel_1,dir*8);
+                GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_3,(1-dir)*GPIO_PIN_3);
+                PWMOutputState(PWM1_BASE,PWM_OUT_5_BIT,true);
                 break;
             default:
-                GPIOPinWrite(GPIO_PORTF_BASE,Wheel_2,1-dir);
+                GPIOPinWrite(GPIO_PORTE_BASE,GPIO_PIN_0,dir*GPIO_PIN_0);
+                PWMOutputState(PWM1_BASE,PWM_OUT_6_BIT,true);
                 break;
         }
         PWMPulseWidthSet(PWM1_BASE,pwm_out,(PWMGenPeriodGet(PWM1_BASE, pwm_gen)+1)*fabs(pwm));
@@ -495,10 +506,10 @@ void UART5_Handler() //树莓派串口
                 }
                 else if(status_hand == 0)   //循迹信息,"theta?b "
                 {
-                    theta = strtof(rData5,&endptr);
+                    endptr = (char*)rData5;
+                    theta = strtof((char*)rData5,&endptr);
                     endptr++;
                     b = strtod(endptr,NULL);
-                    endptr = rData5;
                     line_flag = 1;
                 }
                 else if(strcmp((char*)rData5,"s ") == 0|| strcmp((char*)rData5,"X ") == 0 || status_hand != 0) //进入或处于模拟握手协议中

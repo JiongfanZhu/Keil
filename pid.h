@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 void PID_init(void);
-float PID_x_update(float set_x,uint32_t actual_x,int flag);
+float PID_x_update(float set_x,int actual_x,int flag);
 float PID_speed_update(float setspeed,float actualspeed,float volt,int flag);
 float PID_theta_update(float theta);
 float PID_b_update(float b);

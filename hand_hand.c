@@ -23,7 +23,7 @@ uint8_t mom_decision = 0; //母车第一次转向信息(0左转,1右转)
 uint8_t decision_flag = 0; //是否服从母车转向
 uint8_t back_flag = 0; //绕路标识
 uint8_t next_q = 0; //被阻塞的下一状态
-uint8_t auto_count = 0; //自动巡航路口数
+int auto_count = 0; //自动巡航路口数
 
 #define TURN_X 400
 #define ROUND_X 100
@@ -38,13 +38,13 @@ void StatusReset(void)
     //3:闭环动作状态
     //4:用户指令等待状态/初始状态
     //5:子车阻塞状态
-    status_hand = 5;
+    status_hand = 4;
     x_pid_flag = 0;
     route_flag = 0; //无药品放置
     x_task_flag = 0;
     turn_task_flag = 0;
     LED_flag = 0; //熄灭
-    target_flag = 0;
+    target = 0;
     question = 0;
     mom_car = 0;
     mom_drug = 0;
@@ -313,7 +313,7 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             }
 
         case 4:     //指令等待模式
-            if(message == 1 && rData5[0]>='1' && rData5[0]<='8' && rData5[1] == ' ') //子车病房信息
+            if(message == 2 && mom_car!=0) //子车病房信息
             {
                 target = rData5[0] - '0'; //提取信息
             }
