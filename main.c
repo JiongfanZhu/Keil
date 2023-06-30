@@ -33,19 +33,20 @@ void UART1_Handler(void);
 void Wheel_set(float pwm,int num);
 void USART_PID_Adjust(void);
 float Get_Data(void);
+void f_char_printf(float Xangle);
 
 #define LED_red GPIO_PIN_1
 #define LED_green GPIO_PIN_2
 #define Drug GPIO_PIN_3
 #define round_pulse 390 //编码盘每圈脉冲数
-#define K_round 300 //pwm变换系数
+#define K_round 1000.0 //pwm变换系数
 
 int x_pid_flag = 0; //初始关闭xpid
 int theta_pid_flag = 1;
 int b_pid_flag = 1;
 int setspeed_flag = 1;
 
-float b = 200; //与pid初始化中预设b一致
+float b = 150; //与pid初始化中预设b一致
 float setspeed = 160;
 float x_set1 = 0;
 float x_set2 = 0;
@@ -88,43 +89,41 @@ int main(void)
 
     StatusReset();
 
-    Wheel_set(0.5,1);
-    Wheel_set(0.5,2);
-    //PWMGenDisable(PWM1_BASE,PWM_GEN_3);
-    //PWMGenDisable(PWM1_BASE,PWM_GEN_2);
-
+    Wheel_set(0,1);
+    Wheel_set(0,2);
+    x_pid_flag = 1;
+    theta_pid_flag = 0;
+    b_pid_flag = 0;
+    setspeed_flag = 0;
+    test_flag = 0;
+    //LED_flag = 2;
     while(1)
     {
         /*药品检测*/
         if(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)!=GPIO_PIN_3) //PF3有上拉,不等说明有药品放置
         {
             route_flag = 1;
+            //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 2);
         }
         else
         {
             route_flag = 0;
+            //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 4);
         }
+        //x_set1 += 50;
+        //x_set2 -= 50;
+        //UARTprintf("%d\r\n",QEIPositionGet(QEI0_BASE)-0x7fffffff);
+        //SysCtlDelay(SysCtlClockGet()/3);
+        x_set1 += 2000;
+        x_set2 -= 2000;
+        SysCtlDelay(SysCtlClockGet()/3);
+        x_set1 -= 2000;
+        x_set2 += 2000;
+        SysCtlDelay(SysCtlClockGet()/3);
+
 
         if(test_flag == 1) //测试程序
         {
-            //UARTprintf("test\r\n"); //用户串口测试
-            //UARTCharPutNonBlocking(UART5_BASE, 'h'); //树莓派串口测试
-            //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1, 2); //红灯测试
-            //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 4); //绿灯测试
-
-            //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 4); //绿灯测试
-            //if(!(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==GPIO_PIN_3))
-            //{
-            //    SysCtlDelay(SysCtlClockGet()*0.05/3);//延时消抖
-            //    if(!(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==GPIO_PIN_3))
-            //    {
-            //        GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 2); //红灯测试
-            //    }
-            //    //while(!(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)==GPIO_PIN_3)); //待按键释放
-            //    //SysCtlDelay(SysCtlClockGet()*0.05/3);//延时消抖
-            //}
-            //SysCtlDelay(SysCtlClockGet()/3);
-            GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_2, 4);
         }
         else if(question == 0)
         {
@@ -144,6 +143,7 @@ int main(void)
         {
             GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 0);
         }
+        //SysCtlDelay(SysCtlClockGet()/3);
     }
 
 }
@@ -307,27 +307,27 @@ void GPIO_init()
 
 void Wheel_set(float pwm,int num) //pwm从-1到1
 {
-    uint8_t pwm_out = 0;
-    uint8_t pwm_gen = 0;
+    uint32_t pwm_out = 0;
+    uint32_t pwm_gen = 0;
     uint8_t dir = 0;
-    pwm = -pwm;
     switch(num)
     {
         case 1:
             pwm_out = PWM_OUT_5;
             pwm_gen = PWM_GEN_2;
             break;
-        default:
+        case 2:
             pwm_out = PWM_OUT_6;
             pwm_gen = PWM_GEN_3;
+            break;
     }
-    if(pwm > 1)
+    if(pwm > 0.99)
     {
-        pwm = 1;
+        pwm = 0.99;
     }
-    else if(pwm < -1)
+    else if(pwm < -0.99)
     {
-        pwm = -1;
+        pwm = -0.99;
     }
 
     if(pwm == 0)
@@ -346,17 +346,17 @@ void Wheel_set(float pwm,int num) //pwm从-1到1
     }
     else
     {
-        if(pwm>0)dir = 1; // forward
-
+        dir = pwm>0;
+        pwm = (pwm*(1.5-num)<0)?(1-fabs(pwm)):pwm;
 
         switch(num) //对应GPIO口写入实现正反转
         {
             case 1:
-                GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_3,dir*8);
+                GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_3,(1-dir)*GPIO_PIN_3);
                 PWMOutputState(PWM1_BASE,PWM_OUT_5_BIT,true);
                 break;
             default:
-                GPIOPinWrite(GPIO_PORTE_BASE,GPIO_PIN_0,1-dir);
+                GPIOPinWrite(GPIO_PORTE_BASE,GPIO_PIN_0,dir*GPIO_PIN_0);
                 PWMOutputState(PWM1_BASE,PWM_OUT_6_BIT,true);
                 break;
         }
@@ -382,10 +382,10 @@ void TIMER0_IRQHandler() //10ms一次中断
         //if(uart_flag == 1 && test_flag == 0) //有串口数据更新且不处于测试状态
         if(test_flag == 0) //不处于测试状态->保证10ms的定时触发握手协议
         {
-            if(status_hand != 0) //处于模拟握手协议中
-            {
-                StatusDeal(0);
-            }
+            //if(status_hand != 0) //处于模拟握手协议中
+            //{
+            //    StatusDeal(0);
+            //}
 
             if(i%10==0) // 0.10s theta pid (Using "%" matters!)
             {
@@ -402,15 +402,21 @@ void TIMER0_IRQHandler() //10ms一次中断
 
             if(i%8==0 && x_pid_flag==1) // 0.08s x pid (Using "%" matters!)
             {
-                x_speed1 = PID_x_update(x_set1,(QEIPositionGet(QEI0_BASE)-0x7fffffff),1); //用当前编码盘数据作位移数据
-                x_speed2 = PID_x_update(x_set2,(0x7fffffff-QEIPositionGet(QEI1_BASE)),2);
+                x_speed1 = PID_x_update(x_set1,(int)(QEIPositionGet(QEI0_BASE)-0x7fffffff),1); //用当前编码盘数据作位移数据
+                x_speed2 = PID_x_update(x_set2,(int)(0x7fffffff-QEIPositionGet(QEI1_BASE)),2);
+
+                //f_char_printf(x_speed1);
+                //UARTprintf("   ");
+                //f_char_printf(x_speed2);
+                //UARTprintf("\r\n");
+                //UARTprintf("%d   %d\r\n",(int)x_speed1,(int)x_speed2);
             }
 
             if(i%2==0) // 0.02s speed pid
             {
                 /*present speed*/
-                speed1 = (QEIPositionGet(QEI0_BASE)-0x7fffffff)*60.0/(0.02*round_pulse); //考虑到电机正反转情况,从中间值0x7fffffff开始计数
-                speed2 = (0x7fffffff-QEIPositionGet(QEI1_BASE))*60.0/(0.02*round_pulse);
+                speed1 = ((int)(QEIPositionGet(QEI0_BASE)-0x7fffffff))*60.0/(0.02*round_pulse); //考虑到电机正反转情况,从中间值0x7fffffff开始计数
+                speed2 = ((int)(0x7fffffff-QEIPositionGet(QEI1_BASE)))*60.0/(0.02*round_pulse);
                 if(x_pid_flag == 0) //当位移闭环开启时,不对编码器置位,将speed1,speed2作为两轮位移使用
                 {
                     QEIPositionSet(QEI0_BASE, 0x7fffffff);
@@ -420,6 +426,15 @@ void TIMER0_IRQHandler() //10ms一次中断
                 pwm2 = PID_speed_update(setspeed*setspeed_flag-theta_pid_flag*theta_speed+b_pid_flag*b_speed+x_pid_flag*x_speed2,speed2,pwm2,2);
                 Wheel_set(pwm1/K_round,1);
                 Wheel_set(pwm2/K_round,2);
+
+                f_char_printf(pwm1);
+                UARTprintf(",");
+                f_char_printf(pwm2);
+                UARTprintf(",");
+                f_char_printf(speed1);
+                UARTprintf(",");
+                f_char_printf(speed2);
+                UARTprintf("\n");
             }
 
             if(i>100) // 0.5s reset i
@@ -433,9 +448,9 @@ void TIMER0_IRQHandler() //10ms一次中断
         }
         else
         {
-            UARTprintf("%d  %d\r\n",QEIPositionGet(QEI0_BASE)-0x7fffffff,0x7fffffff-QEIPositionGet(QEI1_BASE)); //传回电机速度数据
-            QEIPositionSet(QEI0_BASE, 0x7fffffff);
-            QEIPositionSet(QEI1_BASE, 0x7fffffff);
+            //UARTprintf("%d  %d\r\n",QEIPositionGet(QEI0_BASE)-0x7fffffff,0x7fffffff-QEIPositionGet(QEI1_BASE)); //传回电机速度数据
+            //QEIPositionSet(QEI0_BASE, 0x7fffffff);
+            //QEIPositionSet(QEI1_BASE, 0x7fffffff);
         }
 }
 
@@ -522,6 +537,21 @@ void UART5_Handler() //树莓派串口
             }
             rx_buf5=0;
         //UARTCharPutNonBlocking(UART1_BASE, rxbuf);
+    }
+}
+
+void f_char_printf(float Xangle)
+{
+    float temp = Xangle;
+
+    if(Xangle>=0)
+    {
+        UARTprintf("%d.%d",(int32_t)temp ,(int32_t)((temp -(int32_t)temp )*1000));
+    }
+    else
+    {
+        temp = -temp;
+        UARTprintf("-%d.%d",(int32_t)temp ,(int32_t)((temp -(int32_t)temp )*1000));
     }
 }
 

@@ -21,6 +21,7 @@ uint8_t target = 0; //目标点标识
 uint8_t next_q = 0; //被子车信息阻塞的下一状态
 int stop_count = 1; //距离被子车阻塞的路口数
 uint8_t turn_flag = 0; //是否完成第一次转向
+uint8_t cross_flag = 0; //是否为第一个路口
 
 #define TURN_X 400
 #define ROUND_X 100
@@ -48,6 +49,7 @@ void StatusReset(void)
     next_q = 0;
     stop_count = 1;
     turn_flag = 0;
+    cross_flag = 0;
     UARTCharPutNonBlocking(UART5_BASE, 'R'); //向树莓派发送复位信息
 }
 
@@ -67,7 +69,7 @@ void StatusReset(void)
 
 message含义:
     0:定时中断进入;
-    1:树莓派识别结果;
+    1:树莓派串口信息;
     2:目标病房信息;
     3:子车释放阻塞信号;
 
@@ -100,10 +102,26 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             {
                 status_hand = 2; //修改为停止状态2
                 recognize_flag = 0; //识别请求复位
-                if(route_flag == 1) //有药品,即送药过程
+                if(route_flag == 1 && cross_flag == 1) //有药品,即送药过程,且不为第一次停止
                 {
                     recognize_flag = 1; //识别请求发送标识置位
                     UARTCharPutNonBlocking(UART5_BASE, 'd'); //发送识别请求
+                }
+                else if(cross_flag == 0) //还没有停止过
+                {
+                    switch(target)
+                    {
+                        case 1:
+                            turn_route_flag = 1; //目标病房为1,应在左侧
+                            break;
+                        case 2:
+                            turn_route_flag = 2; //目标病房为2,应在右侧
+                            break;
+                        default:
+                            turn_route_flag = 0; //不是近端药房,直行
+                    }
+                    status_hand = 3; //直接进入闭环
+                    cross_flag = 1; //标识位置位
                 }
                 else if(question==2 || question==1) //仅在提高进行阻塞
                 {
