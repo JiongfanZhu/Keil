@@ -19,43 +19,41 @@ struct _pid{
 struct _pid *pid;
 
 void PID_init(void){
-    //printf("PID_init begin \n");
     pid1_v.SetSpeed=0.0;    pid1_v.ActualSpeed=0.0;
     pid1_v.err=0.0;         pid1_v.err_last=0.0;
     pid1_v.err_next=0.0;    pid1_v.voltage=0.0;
-    pid1_v.integral=0.0;    pid1_v.Kp=0.5;
-    pid1_v.Ki=0.3;          pid1_v.Kd=0.1;
+    pid1_v.integral=0.0;    pid1_v.Kp=0.65;
+    pid1_v.Ki=0;          pid1_v.Kd=0.05;
 
     pid2_v.SetSpeed=0.0;    pid2_v.ActualSpeed=0.0;
     pid2_v.err=0.0;         pid2_v.err_last=0.0;
     pid2_v.err_next=0.0;    pid2_v.voltage=0.0;
-    pid2_v.integral=0.0;    pid2_v.Kp=0.5;
-    pid2_v.Ki=0.3;          pid2_v.Kd=0.1;
+    pid2_v.integral=0.0;    pid2_v.Kp=0.65;
+    pid2_v.Ki=0;          pid2_v.Kd=0.05;
 
     pid_x1.SetSpeed=0.0;     pid_x1.ActualSpeed=0.0;
     pid_x1.err=0.0;          pid_x1.err_last=0.0;
     pid_x1.err_next=0.0;     pid_x1.voltage=0.0;
-    pid_x1.integral=0.0;     pid_x1.Kp=1;
-    pid_x1.Ki=0.05;           pid_x1.Kd=0.01;
+    pid_x1.integral=0.0;     pid_x1.Kp=0.5;
+    pid_x1.Ki=0;           pid_x1.Kd=0.01;
 
     pid_x2.SetSpeed=0.0;     pid_x2.ActualSpeed=0.0;
     pid_x2.err=0.0;          pid_x2.err_last=0.0;
     pid_x2.err_next=0.0;     pid_x2.voltage=0.0;
-    pid_x2.integral=0.0;     pid_x2.Kp=1;
-    pid_x2.Ki=0.05;           pid_x2.Kd=0.01;
+    pid_x2.integral=0.0;     pid_x2.Kp=0.5;
+    pid_x2.Ki=0;           pid_x2.Kd=0.01;
 
     pid_theta.SetSpeed=0.0; pid_theta.ActualSpeed=0.0;
     pid_theta.err=0.0;      pid_theta.err_last=0.0;
     pid_theta.voltage=0.0;  pid_theta.integral=0.0;
-    pid_theta.Kp=1.15;      pid_theta.Ki=0.01;
-    pid_theta.Kd=0.35;
+    pid_theta.Kp=1.55;      pid_theta.Ki=0.02;
+    pid_theta.Kd=0.09;
 
-    pid_b.SetSpeed=150.0; pid_b.ActualSpeed=0.0;
+    pid_b.SetSpeed=140.0; pid_b.ActualSpeed=0.0;
     pid_b.err=0.0;      pid_b.err_last=0.0;
     pid_b.voltage=0.0;  pid_b.integral=0.0;
-    pid_b.Kp=0.20;      pid_b.Ki=0.002;
-    pid_b.Kd=0.07;
-    //printf("PID_init end \n");
+    pid_b.Kp=0.8;      pid_b.Ki=0.005;
+    pid_b.Kd=0.05;
 }
 
 float PID_x_update(float set_x,int actual_x,int flag) //Î»ÒÆÊ½
@@ -66,11 +64,13 @@ float PID_x_update(float set_x,int actual_x,int flag) //Î»ÒÆÊ½
     if(flag==1) // determine wheel
     {
         pid = &pid_x1;
+
     }
     else
     {
         pid = &pid_x2;
     }
+
     /*update set and actual*/
     pid->SetSpeed=set_x;
     pid->ActualSpeed=actual_x;
@@ -82,15 +82,24 @@ float PID_x_update(float set_x,int actual_x,int flag) //Î»ÒÆÊ½
     //pid->err_last=pid->err_next;
     //pid->err_next=pid->err;
 
-    pid->voltage=pid->Kp*pid->err+pid->Ki*pid->integral+pid->Kd*(pid->err-pid->err_last);
+    pid->voltage=(pid->Kp-0.3*(set_x>0&&flag==1||set_x<0&&flag==2))*pid->err+pid->Ki*pid->integral+pid->Kd*(pid->err-pid->err_last);
     pid->err_last=pid->err;
 
-    //int speed_x= (int)incrementSpeed; //x->speed
+    /*check the bound*/
+    if(pid->voltage>500)
+    {
+        pid->voltage=500;
+    }
+    else if(pid->voltage<-500)
+    {
+        pid->voltage=-500;
+    }
+
     
     return pid->voltage;
 }
 
-float PID_speed_update(float setspeed,float actualspeed,float volt,int flag) //Î»ÒÆÊ½
+float PID_speed_update(float setspeed,float actualspeed,int flag) //Î»ÒÆÊ½
 {
     /*setspeed and actualspeed are RPM(from -360 to 360)*/
     /*pid.voltage is PWM(from -1000 to 1000)*/
@@ -110,14 +119,14 @@ float PID_speed_update(float setspeed,float actualspeed,float volt,int flag) //Î
 
     /*calculate output voltage*/
     //pid->err=pid->SetSpeed-pid->ActualSpeed;
-    //float incrementSpeed=pid->Kp*(pid->err-pid->err_next)+pid->Ki*pid->err+pid->Kd*(pid->err-2*pid->err_next+pid->err_last);
+    //pid->voltage=pid->Kp*(pid->err-pid->err_next)+pid->Ki*pid->err+pid->Kd*(pid->err-2*pid->err_next+pid->err_last);
     //pid->err_last=pid->err_next;
     //pid->err_next=pid->err;
 
     //volt+=incrementSpeed*25/9; // 360(v)->1000(rpm)
 
     pid->err=pid->SetSpeed-pid->ActualSpeed;
-    pid->voltage=pid->Kp*pid->err+pid->Ki*pid->integral+pid->Kd*(pid->err-pid->err_last);
+    pid->voltage+=pid->Kp*pid->err+pid->Ki*pid->integral+pid->Kd*(pid->err-pid->err_last);
     pid->err_last=pid->err;
 
     /*check the bound*/
@@ -157,7 +166,6 @@ float PID_theta_update(float theta) //Î»ÖÃÊ½
     if(pid_theta.err>=18 || pid_theta.err<=-18 || pid_theta.err*pid_theta.err_last<=0)pid_theta.integral=0; //È¡Ïû´ó½Ç¶È»ý·Ö
 
     pid_theta.voltage=pid_theta.Kp*pid_theta.err+pid_theta.Ki*pid_theta.integral+pid_theta.Kd*(pid_theta.err-pid_theta.err_last);
-		//((pid_theta.err-pid_theta.err_last>-20 && pid_theta.err-pid_theta.err_last<20)?1:0)
     pid_theta.err_last=pid_theta.err;
 
     // 90(theta)->100%, 80% theta value from -25 to 25
@@ -169,7 +177,7 @@ float PID_theta_update(float theta) //Î»ÖÃÊ½
 float PID_b_update(float b) //ÔöÁ¿Ê½
 {
 
-    if(b>0 && b<400)
+    if(b>0 && b<300)
     {
         pid_b.ActualSpeed=b;
     }
@@ -182,7 +190,7 @@ float PID_b_update(float b) //ÔöÁ¿Ê½
     pid_b.err=pid_b.SetSpeed-pid_b.ActualSpeed;
 
     /*do not int big err*/
-    if(pid_b.err<40 && pid_b.err>-40 && pid_b.err*pid_b.err_last>0)pid_b.integral+=pid_b.err; //Ð¡½Ø¾à»ý·Ö
+    //if(pid_b.err<40 && pid_b.err>-40 && pid_b.err*pid_b.err_last>0)pid_b.integral+=pid_b.err; //Ð¡½Ø¾à»ý·Ö
 
     pid_b.voltage=pid_b.Kp*pid_b.err+pid_b.Ki*pid_b.integral+pid_b.Kd*(pid_b.err-pid_b.err_last);
     pid_b.err_last=pid_b.err;
@@ -231,4 +239,18 @@ void PID_para(int flag_pid,int flag_para,float para)
         pid->Kd = para;
         break;
     }
+}
+
+void PID_reset()
+{
+    PID_init();
+    x_last_flag = 0;
+    x_set1 = 0;
+    x_set2 = 0;
+    Wheel_set(0,1);
+    Wheel_set(0,2);
+    x_pid_flag = 0;
+    b_pid_flag = 0;
+    theta_pid_flag = 0;
+    setspeed_flag = 0;
 }

@@ -21,6 +21,8 @@ extern int theta_pid_flag;
 extern int setspeed_flag;
 extern uint8_t LED_flag;
 extern uint8_t question;
+extern uint32_t x_last1;
+extern uint32_t x_last2;
 
 extern float x_set1; //位移闭环设定值
 extern float x_set2;
@@ -30,8 +32,5 @@ extern uint8_t rData5[30];
 
 void StatusReset(void); //状态重置
 void StatusDeal(uint8_t message); //状态更改与任务分配
-
-
-
 
 #endif /* HAND_HAND_H_ */
