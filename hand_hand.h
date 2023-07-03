@@ -23,6 +23,10 @@ extern uint8_t LED_flag;
 extern uint8_t question;
 extern uint32_t x_last1;
 extern uint32_t x_last2;
+extern uint8_t pid_flag;
+extern uint8_t data_flag;
+extern uint8_t pid_reset_flag;
+extern int keep_flag;
 
 extern float x_set1; //位移闭环设定值
 extern float x_set2;

@@ -45,9 +45,10 @@ int x_pid_flag = 0; //初始关闭xpid
 int theta_pid_flag = 0;
 int b_pid_flag = 0;
 int setspeed_flag = 0;
+uint8_t pid_flag = 0;
 
-float b = 150; //与pid初始化中预设b一致
-float setspeed = 400;
+float b = 135; //与pid初始化中预设b一致
+float setspeed = 410;
 float x_set1 = 0;
 float x_set2 = 0;
 float theta = 0;
@@ -72,7 +73,10 @@ uint8_t route_flag = 0;     //药品状态标志位
 uint8_t test_flag = 1;      //测试模式
 uint8_t LED_flag = 0;       //0不亮,1亮红灯,2亮绿灯
 int uart_flag = 0;      //是否有有效停止信息
-int x_last_flag = 0;
+int x_last_flag = 0;    //xpid开始准备标识
+uint8_t data_flag = 0; //角度截距信息有效标识
+uint8_t pid_reset_flag = 0; //速度pid重置标识
+int keep_flag = -1; //屏蔽停止信号flag
 
 uint8_t question = 0; //题目选择,默认为基础部分0,提高(1)1,提高(2)2
 uint32_t x_last1 = 0x7fffffff;
@@ -93,14 +97,8 @@ int main(void)
 
     StatusReset();
     test_flag = 0;
-    //setspeed_flag = 1;
-
-    //theta_pid_flag = 0;
-    //b_pid_flag = 0;
-    //x_pid_flag = 1;
-    //LED_flag = 2;
-    //x_set1 = -800;
-    //x_set2 = 800;
+    Wheel_set(0,1);
+    Wheel_set(0,2);
 
     while(1)
     {
@@ -119,46 +117,73 @@ int main(void)
 
         if(test_flag == 1) //测试程序
         {
-            /*直线测试程序*/
+            /*直线速度闭环测试*/
+            /*pid_flag = 1;
+            setspeed_flag = 1;
+            setspeed = 450;
+            SysCtlDelay(SysCtlClockGet()/3);
+            setspeed = 0;
+            SysCtlDelay(SysCtlClockGet()/3);
+            setspeed = -450;
+            SysCtlDelay(SysCtlClockGet()/3);
+            setspeed = 0;
+            SysCtlDelay(SysCtlClockGet()/3);*/
+
+            /*紧急刹车测试*/
+            /*x_pid_flag = 0;
+            pid_flag = 1;
+            setspeed_flag = 1;
+            setspeed = 450;
+            SysCtlDelay(SysCtlClockGet()/3);
+            setspeed_flag = 0;
+            x_set1 = -500;
+            x_set2 = -500;
+            x_pid_flag = 1;
+            x_last_flag = 0;
+            SysCtlDelay(SysCtlClockGet()/3);
+
+            x_pid_flag = 0;
+            pid_flag = 1;
+            setspeed_flag = 1;
+            setspeed = -450;
+            SysCtlDelay(SysCtlClockGet()/3);
+            setspeed_flag = 0;
+            x_set1 = 500;
+            x_set2 = 500;
+            x_pid_flag = 1;
+            x_last_flag = 0;
+            SysCtlDelay(SysCtlClockGet()/3);*/
+
+            /*直线闭环测试程序*/
             /*x_set1 = 1250;
             x_set2 = 1300;
             x_pid_flag = 1;
             x_last_flag = 0;
             SysCtlDelay(3*SysCtlClockGet()/3);
-            //PID_reset();
-            //SysCtlDelay(SysCtlClockGet()/3);
             x_set1 = -1300;
             x_set2 = -1250;
             x_pid_flag = 1;
             x_last_flag = 0;
-            SysCtlDelay(3*SysCtlClockGet()/3);
-            //PID_reset();
-            //SysCtlDelay(SysCtlClockGet()/3);*/
+            SysCtlDelay(3*SysCtlClockGet()/3);*/
             
             /*左右转测试*/
-            /*x_set1 = 1250;
-            x_set2 = -1250;
+            /*x_set1 = 950;
+            x_set2 = -950;
             x_pid_flag = 1;
             x_last_flag = 0;
             SysCtlDelay(3*SysCtlClockGet()/3);
-            //PID_reset();
-            //SysCtlDelay(SysCtlClockGet()/3);
-            x_set1 = -1250;
-            x_set2 = 1250;
+            x_set1 = -1200;
+            x_set2 = 1200;
             x_pid_flag = 1;
             x_last_flag = 0;
-            SysCtlDelay(3*SysCtlClockGet()/3);
-            //PID_reset();
-            //SysCtlDelay(SysCtlClockGet()/3);*/
+            SysCtlDelay(3*SysCtlClockGet()/3);*/
 
             /*掉头测试*/
-            /*x_set1 = 2000;
-            x_set2 = -2000;
+            /*x_set1 = 1750;
+            x_set2 = -1750;
             x_last_flag = 0;
             x_pid_flag = 1;
-            SysCtlDelay(3*SysCtlClockGet()/3);
-            //PID_reset();
-            //SysCtlDelay(SysCtlClockGet()/3);*/
+            SysCtlDelay(3*SysCtlClockGet()/3);*/
 
 
         }
@@ -408,6 +433,8 @@ void TIMER0_IRQHandler() //10ms一次中断
     static float x_speed2 = 0;
     static float pwm1 = 0;
     static float pwm2 = 0;
+    static uint32_t x_next1 = 0x7fffffff;
+    static uint32_t x_next2 = 0x7fffffff;
 
     //获取中断状态
     uint32_t status=TimerIntStatus(TIMER0_BASE, true);
@@ -421,18 +448,11 @@ void TIMER0_IRQHandler() //10ms一次中断
             StatusDeal(0);
         }
 
-
-        if(i%4==0) // 0.10s theta pid (Using "%" matters!)
+        if(i%4==0 && data_flag == 1 && theta_pid_flag==1 && b_pid_flag==1) // 0.10s theta pid (Using "%" matters!)
         {
-            if(theta_pid_flag==1)
-            {
-                theta_speed = PID_theta_update(theta);
-            }
-
-            if(b_pid_flag==1)
-            {
-                b_speed = PID_b_update(b);
-            }
+            theta_speed = PID_theta_update(theta);
+            b_speed = PID_b_update(b);
+            data_flag = 0;
         }
 
         if(i%4==0 && x_pid_flag==1) // 0.08s x pid (Using "%" matters!)
@@ -441,26 +461,47 @@ void TIMER0_IRQHandler() //10ms一次中断
             {
                 x_last1 = QEIPositionGet(QEI0_BASE);
                 x_last2 = QEIPositionGet(QEI1_BASE);
+                x_next1 = 0x7fffffff;
+                x_next2 = 0x7fffffff;
                 x_last_flag = 1;
             }
             else
             {
-                    x_speed1 = PID_x_update(x_set1,(int)(QEIPositionGet(QEI0_BASE)-x_last1),1); //用当前编码盘数据作位移数据
-                    x_speed2 = PID_x_update(x_set2,(int)(x_last2-QEIPositionGet(QEI1_BASE)),2);
+                    speed1 = (int)(QEIPositionGet(QEI0_BASE)-x_next1)*60.0/(0.02*round_pulse); //考虑到电机正反转情况,从中间值0x7fffffff开始计数
+                    speed2 = (int)(x_next2-QEIPositionGet(QEI1_BASE))*60.0/(0.02*round_pulse);
+                    x_next1 = QEIPositionGet(QEI0_BASE);
+                    x_next2 = QEIPositionGet(QEI1_BASE);
+
+                    x_speed1 = PID_x_update(x_set1,(int)(x_next1-x_last1),1); //用当前编码盘数据作位移数据
+                    x_speed2 = PID_x_update(x_set2,(int)(x_last2-x_next2),2);
                     Wheel_set(x_speed1/K_round,1);
                     Wheel_set(x_speed2/K_round,2);
 
-                    /*f_char_printf(x_speed1);
+                if(test_flag == 1)
+                {
+                    f_char_printf(x_speed1);
                     UARTprintf(",");
                     f_char_printf(x_speed2);
+                    UARTprintf(",");
+                    f_char_printf(x_set1);
+                    UARTprintf(",");
+                    f_char_printf(x_set2);
                     UARTprintf(",%d,%d\n",(int)(QEIPositionGet(QEI0_BASE)-x_last1),(int)(x_last2-QEIPositionGet(QEI1_BASE)));
-                */
+                }
             }
         }
-            if(i%2==0 && x_pid_flag == 0) // 0.02s speed pid
+            if(x_pid_flag == 0 && pid_flag == 1) // 0.02s speed pid
             {
-                    speed1 = (int)(QEIPositionGet(QEI0_BASE)-0x7fffffff)*60.0/(0.02*round_pulse); //考虑到电机正反转情况,从中间值0x7fffffff开始计数
-                    speed2 = (int)(0x7fffffff-QEIPositionGet(QEI1_BASE))*60.0/(0.02*round_pulse);
+                if(pid_reset_flag == 1)
+                {
+                    QEIPositionSet(QEI0_BASE, 0x7fffffff);
+                    QEIPositionSet(QEI1_BASE, 0x7fffffff);
+                    pid_reset_flag = 0;
+                }
+                else
+                {
+                    speed1 = (int)(QEIPositionGet(QEI0_BASE)-0x7fffffff)*11; //考虑到电机正反转情况,从中间值0x7fffffff开始计数
+                    speed2 = (int)(0x7fffffff-QEIPositionGet(QEI1_BASE))*11;
                     QEIPositionSet(QEI0_BASE, 0x7fffffff);
                     QEIPositionSet(QEI1_BASE, 0x7fffffff);
 
@@ -468,6 +509,22 @@ void TIMER0_IRQHandler() //10ms一次中断
                     pwm2 = PID_speed_update(setspeed*setspeed_flag+theta_pid_flag*theta_speed-b_pid_flag*b_speed,speed2,2);
                     Wheel_set(pwm1/K_round,1);
                     Wheel_set(pwm2/K_round,2);
+ 
+                }
+
+                if(test_flag == 1)
+                {
+                    /*f_char_printf(pwm1);
+                    UARTprintf(",");
+                    f_char_printf(pwm2);
+                    UARTprintf(",");
+                    f_char_printf(speed1);
+                    UARTprintf(",");
+                    f_char_printf(speed2);
+                    UARTprintf(",");
+                    f_char_printf(setspeed);
+                    UARTprintf("\n");*/
+                }
                 /*f_char_printf(theta);
                 UARTprintf(",");
                 f_char_printf(b);
@@ -485,6 +542,11 @@ void TIMER0_IRQHandler() //10ms一次中断
                 UARTprintf(",");
                 f_char_printf(speed2);
                 UARTprintf("\n");*/
+            }
+            else if(x_pid_flag == 0 && pid_flag == 0)
+            {
+                Wheel_set(0,1);
+                Wheel_set(0,2);
             }
 
             if(i>100) // 0.5s reset i
@@ -573,25 +635,20 @@ void UART5_Handler() //树莓派串口
                 {
                     StatusDeal(2);
                 }
-                else if(rData5[0]>='a' && rData5[0]<='z' && rData5[1]==' ') //循迹停止或有识别信息
+                else if(((rData5[0]>='a' && rData5[0]<='z')||rData5[0]=='S') && rData5[1]==' ') //循迹停止或有识别信息
                 {
                     StatusDeal(1);
+                    UARTprintf("message\r\n");
                 }
-                else if(rData5[0]=='S' && rData5[1]==' ') //循迹停止或有识别信息
-                {
-                    StatusDeal(1);
-                }
-                else if(status_hand == 0 || status_hand == 7)   //循迹信息,"theta?b "
+                else if(status_hand == 0 || status_hand == 7 ||status_hand == 8)   //循迹信息,"theta?b "
                 {
                     theta = strtof((char*)rData5,&endptr);
                     endptr++;
                     b = strtod(endptr,NULL);
                     endptr = (char*)rData5;
-                    if(status_hand != 0 && uart_flag > 0)
-                    {
-                        uart_flag --;
-                        //UARTprintf("uart_flag=%d\r\n",uart_flag);
-                    }
+                    data_flag = 1;
+                    if(status_hand == 7 && uart_flag > 0)uart_flag --;
+                    if(status_hand == 8 && keep_flag > 0)keep_flag --;
                 }
 
                 memset(rData5,0,sizeof(rData5)); //清空缓存数组

@@ -7,12 +7,12 @@
 
 #include "hand_hand.h"
 
-#define TURN_X 2000
-#define L_ROUND_X 1250
-#define R_ROUND_X 1250
-#define STRAIGHT_X1 1250
-#define STRAIGHT_X2 1300
-#define STOP 15
+#define TURN_X 1750
+#define L_ROUND_X 1100
+#define R_ROUND_X 1100
+#define STRAIGHT_X1 1300
+#define STRAIGHT_X2 1400
+#define STOP 5
 #define SPEED_B 50
 #define UART_CNT 10
 
@@ -43,8 +43,10 @@ void StatusReset(void)
     //3:闭环动作状态
     //4:用户指令等待状态/初始状态
     //5:子车阻塞状态
+    //6:停止开环状态
+    //7:循迹屏蔽状态
+
     status_hand = 4;
-    //PID_reset();
     route_len = 0; //清空决策数
     memset(route,0,sizeof(route)); //清空决策记录
     route_flag = 0; //无药品放置
@@ -59,6 +61,9 @@ void StatusReset(void)
     cross_flag = 0;
     uart_flag = UART_CNT;
     stop_judge = STOP;
+    pid_flag = 0;
+    pid_reset_flag = 0;
+    keep_flag = -1;
     UARTCharPutNonBlocking(UART5_BASE, 'R'); //向树莓派发送复位信息
 }
 
@@ -100,24 +105,46 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
     switch(status_hand)
     {
         case 0:     //正常运行状态
-        UARTprintf("case 0\r\n");
+            UARTprintf("case 0\r\n");
             if(message == 1 && strcmp((char*)rData5,"s ") == 0) //识别到停止标识,树莓派发送停止指令后自动待机
             {
-                //UARTprintf("stop\r\n");
-                status_hand = 1; //修改为正在停止状态1
-                //status_hand = 6;
-                /*关闭巡线相关pid*/
-                //PID_reset();
-                b_pid_flag = 0;
-                setspeed_flag = 0;
-                theta_pid_flag = 0;
-                Wheel_set(0,1);
-                Wheel_set(0,2);
+                if(cross_flag == 0 && target > 2) //屏蔽近端药房的停止信号
+                {
+                    UARTprintf("first cross\r\n");
+                    UARTCharPutNonBlocking(UART5_BASE, 'r'); //要求继续巡线
+                    keep_flag = 5;
+                    status_hand = 8; //循迹保持
+                    route[route_len] = 0; //该路口直行
+                    route_len++;
+                    cross_flag = 1; //标识位置位
+                }
+                else
+                {
+                    UARTprintf("stop\r\n");
+                    /*关闭巡线相关pid*/
+                    pid_flag = 0;
+                    b_pid_flag = 0;
+                    setspeed_flag = 0;
+                    theta_pid_flag = 0;
+                    stop_judge = STOP;
+                    x_pid_flag = 1;
+                    x_last_flag = 0;
+                    x_set1 = -50;
+                    x_set2 = -100;
+                    if(route_flag == 1)
+                    {
+                        status_hand = 6; //修改为正在停止开环状态1
+                    }
+                    else
+                    {
+                        status_hand = 1;
+                    }
+                }    
             }
             break;
         case 1:     //正在停止状态,需要检查是否已经停下,停止不使用闭环
-            UARTprintf("case 1\r\n");
-            if(fabs(speed1) <= SPEED_B && fabs(speed2) <= SPEED_B) //已停止
+            //UARTprintf("case 1\r\n");
+            if(fabs(speed1) <= SPEED_B && fabs(speed2) <= SPEED_B && x_last_flag == 1) //已停止
             {
                 stop_judge--;
             }
@@ -128,7 +155,7 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             if(stop_judge <=0)
             {
                 stop_judge = STOP;
-                //PID_reset();
+                UARTprintf("already stop\r\n");
                 status_hand = 2; //修改为停止状态2
                 recognize_flag = 0; //识别请求复位
                 if(route_flag == 1 && cross_flag == 1) //有药品,即送药过程,且不为第一次停止
@@ -139,7 +166,7 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                 }
                 else if(cross_flag == 0) //还没有停止过
                 {
-                    //UARTprintf("first turn\r\n");
+                    UARTprintf("1 or 2 room\r\n");
                     switch(target)
                     {
                         case 1:
@@ -151,6 +178,8 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                         default:
                             turn_route_flag = 0; //不是近端药房,直行
                     }
+                    route[route_len] = turn_route_flag;
+                    route_len++;
                     status_hand = 3; //直接进入闭环
                     cross_flag = 1; //标识位置位
                 }
@@ -164,13 +193,9 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                     }
                 }
             }
-            else
-            {
-                //UARTprintf("not stop yet\r\n");
-            }
             break;
         case 2:     //停止状态/树莓派等待状态
-            UARTprintf("case 2\r\n");
+            //UARTprintf("case 2\r\n");
             if(message != 1 && recognize_flag == 1)
             {
                 UARTCharPutNonBlocking(UART5_BASE, 'd'); //发送识别请求
@@ -212,6 +237,7 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                     turn_route_flag = 3;
                     LED_flag = 1; //红灯亮(基础部分)
                 }
+                UARTprintf("decision:%d\r\n",turn_route_flag);
                 status_hand = 3; //修改为闭环动作状态3
             }
             else if(route_len == -2) //经过所有记录路口并停止->到起点了
@@ -241,8 +267,8 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             task_flag = 0;
             break;
         case 3:     //闭环动作状态
-        UARTprintf("case 3\r\n");
-            if(fabs(speed1) <= SPEED_B && fabs(speed2) <= SPEED_B) //停止说明已完成上一闭环任务或从状态2转换至3
+        //UARTprintf("case 3\r\n");
+            if(fabs(speed1) <= SPEED_B && fabs(speed2) <= SPEED_B && x_last_flag == 1) //停止说明已完成上一闭环任务或从状态2转换至3
             {
                 stop_judge--;
             }
@@ -253,16 +279,11 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             if(stop_judge <= 0)
             {
                 stop_judge = STOP;
-                //PID_reset();
-                //UARTprintf("case 3\r\n");
                 switch(turn_route_flag) //提取闭环指示
                 {
                     case 0: //直线
                         if(x_task_flag == 0) //未开启直线闭环
                         {
-                            //UARTprintf("step1\r\n");
-
-                            //PID_reset();
                             x_last_flag = 0;
                             x_pid_flag = 1;
 
@@ -272,8 +293,6 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                         }
                         else
                         {
-                            //PID_reset();
-                            //UARTprintf("step2\r\n");
                             task_flag = 1;
                         }
                         break;
@@ -350,13 +369,13 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                 }
                 if(task_flag == 1) //完成闭环任务
                 {
-                    //UARTprintf("task done\r\n");
+                    UARTprintf("task done\r\n");
                     UARTCharPutNonBlocking(UART5_BASE, 'r'); //发送巡线请求
                     if((stop_count==-1 && question==2)||(stop_count==0 && question==1))UARTprintf("ok "); //在被阻塞后的第一个路口完成动作后,释放子车阻塞信号
                     status_hand = 7; //修改为正常运行状态
                     /*开启需要的pid*/
                     //PID_reset();
-                    x_pid_flag = 0;
+                    //x_pid_flag = 0;
                     uart_flag = UART_CNT;
 
                     //b_pid_flag = 1;
@@ -367,11 +386,12 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             break;
 
         case 4:     //指令等待状态/初始状态
-        UARTprintf("case 4\r\n");
+        //UARTprintf("case 4\r\n");
             if(message == 2) //树莓派完成识别
             {
                 target = rData5[0]-'0';
-                UARTprintf("%d ",target); //发送母车病房信息
+                //UARTprintf("%d ",target); //向子车发送母车病房信息
+                UARTprintf("room:%d\r\n",target);
             }
             if(target != 0 && route_flag == 1) //药品完成装载且树莓派已完成识别
             {
@@ -389,27 +409,58 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                 next_q = 0;
             }
             break;
-        case 6:     //测试状态
-            //PID_reset();
-            if(message == 4)
+        case 6:     //停止开环状态
+            if(fabs(speed1) <= SPEED_B && fabs(speed2) <= SPEED_B && x_last_flag == 1) //停止说明已完成上一闭环任务或从状态2转换至3
             {
-                status_hand = 7;
-                UARTCharPutNonBlocking(UART5_BASE, 'r'); //发送巡线请求
-                uart_flag = UART_CNT;
+                stop_judge--;
+            }
+            else
+            {
+                stop_judge = STOP;
+            }
+            if(stop_judge <= 0)
+            {
+                x_pid_flag = 1;
+                x_last_flag = 0;
+                x_set1 = -800;
+                x_set2 = -670;
+                status_hand = 1;
             }
             break;
         case 7:     //循迹屏蔽状态
-            UARTprintf("case 7\r\n");
-            if(message == 1)
+            //UARTprintf("case 7\r\n");
+            if(message == 1 && strcmp((char*)rData5,"s ") == 0) //残留帧造成停止
             {
                 UARTCharPutNonBlocking(UART5_BASE, 'r');
+                UARTprintf("error stop\r\n");
                 uart_flag = UART_CNT;
             }
-            if(uart_flag <= 0)
+            else if(uart_flag == 0) //当前循迹帧稳定
             {
+                uart_flag = -1;
                 status_hand = 0;
                 x_pid_flag = 0;
-                //PID_reset();
+                data_flag = 0;
+                pid_reset_flag = 1;
+                pid_flag = 1;
+                setspeed_flag = 1;
+                b_pid_flag = 1;
+                theta_pid_flag = 1;
+            }
+            else
+            {
+                UARTCharPutNonBlocking(UART5_BASE, 'r');
+            }
+            break;
+        case 8:     //直行保持状态
+            if(keep_flag == 0)
+            {
+                keep_flag = -1;
+                status_hand = 0;
+                x_pid_flag = 0;
+                data_flag = 0;
+                pid_reset_flag = 1;
+                pid_flag = 1;
                 setspeed_flag = 1;
                 b_pid_flag = 1;
                 theta_pid_flag = 1;
