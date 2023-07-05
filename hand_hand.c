@@ -110,6 +110,34 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
             //UARTprintf("keep = %d\r\n",keep_flag);
             if(message == 1) //识别到停止标识,树莓派发送停止指令后自动待机
             {
+<<<<<<< HEAD
+=======
+                /*if(cross_flag == 0 && target > 2) //屏蔽近端药房的停止信号
+                {
+                    switch (keep)
+                    {
+                        case 0: //经过检查点
+                            UARTprintf("keep 0\r\n");
+                            keep = -1; //保持完成
+                            cross_flag = 1; //标识位置位
+                            status_hand = 1; //循迹保持
+                            route[route_len] = 0; //该路口直行
+                            route_len++;
+                            break;         
+                        case 1: //任务挂起且message=1,发出停止信号
+                            UARTprintf("keep 1\r\n");
+                            UARTCharPutNonBlocking(UART5_BASE, 'r'); //要求继续巡线
+                            break;
+                        case -1: //还未挂起过
+                            UARTprintf("keep -1\r\n");
+                            keep = 1;
+                            break;
+                    }                       
+                }
+                else*/
+                {
+
+>>>>>>> 32d03f41b083194d02e93784e70f39fc344454ed
                     UARTprintf("stop\r\n");
                     /*关闭巡线相关pid*/
                     //pid_flag = 0;
@@ -118,8 +146,18 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
                     setspeed = 0;
 
                     stop_judge = STOP;
+<<<<<<< HEAD
                     time_count = TIME_STOP;
 
+=======
+                    //Wheel_set(-0.2,1);
+                    //Wheel_set(-0.2,2);
+                    time_count = TIME_STOP;
+                    //x_pid_flag = 1;
+                    //x_last_flag = 0;
+                    //x_set1 = 350;
+                    //x_set2 = 350;
+>>>>>>> 32d03f41b083194d02e93784e70f39fc344454ed
                     if(route_flag == 1 && cross_flag == 1)
                     {
                         status_hand = 1; //修改为正在停止开环状态1
@@ -457,11 +495,32 @@ void StatusDeal(uint8_t message) //message=0表示无串口信息,否则有串口信息
 
                 setspeed_flag = 1;
                 pos_pid_flag = 1;
+<<<<<<< HEAD
+=======
             }
             else
             {
                 UARTCharPutNonBlocking(UART5_BASE, 'r');
             }
             break;
+        /*case 8:     //直行保持状态
+            if(keep_flag == 0)
+            {
+                //keep_flag = -1;
+                status_hand = 0;
+                x_pid_flag = 0;
+                data_flag = 0;
+                pid_reset_flag = 1;
+                pid_flag = 1;
+
+                setspeed_flag = 1;
+                pos_pid_flag = 1;
+>>>>>>> 32d03f41b083194d02e93784e70f39fc344454ed
+            }
+            else
+            {
+                UARTCharPutNonBlocking(UART5_BASE, 'r');
+            }
+            break;*/
     }
 }

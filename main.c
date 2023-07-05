@@ -96,6 +96,7 @@ int main(void)
     if(test_flag == 0)StatusReset();
     Wheel_set(0,1);
     Wheel_set(0,2);
+    //SysCtlDelay(2*SysCtlClockGet()/3);
 
     while(1)
     {
@@ -160,6 +161,11 @@ int main(void)
             setspeed_flag = 0;
             x_set1 = -150;
             x_set2 = -150;
+            x_pid_flag = 1;
+            x_last_flag = 0;
+            SysCtlDelay(SysCtlClockGet()/3);
+            x_set1 = -500;
+            x_set2 = -500;
             x_pid_flag = 1;
             x_last_flag = 0;
             SysCtlDelay(SysCtlClockGet()/3);*/
