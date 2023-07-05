@@ -34,27 +34,24 @@ void Wheel_set(float pwm,int num);
 void USART_PID_Adjust(void);
 float Get_Data(void);
 void f_char_printf(float Xangle);
+uint8_t Drug_Read(void);
 
-#define LED_red GPIO_PIN_1
-#define LED_green GPIO_PIN_2
-#define Drug GPIO_PIN_3
+#define SETSPEED 390
 #define round_pulse 390 //编码盘每圈脉冲数
 #define K_round 1000.0 //pwm变换系数
 
 int x_pid_flag = 0; //初始关闭xpid
-int theta_pid_flag = 0;
-int b_pid_flag = 0;
+int pos_pid_flag = 0;
 int setspeed_flag = 0;
 uint8_t pid_flag = 0;
 
-float b = 135; //与pid初始化中预设b一致
-float setspeed = 410;
+float setspeed = SETSPEED;
 float x_set1 = 0;
 float x_set2 = 0;
-float theta = 0;
+float pos = 0;
 
-float theta_speed = 0;
-float b_speed = 0;
+float pos_speed = 0;
+
 float speed1 = 0;
 float speed2 = 0;
 
@@ -76,7 +73,7 @@ int uart_flag = 0;      //是否有有效停止信息
 int x_last_flag = 0;    //xpid开始准备标识
 uint8_t data_flag = 0; //角度截距信息有效标识
 uint8_t pid_reset_flag = 0; //速度pid重置标识
-int keep_flag = -1; //屏蔽停止信号flag
+uint8_t time_count = 0;
 
 uint8_t question = 0; //题目选择,默认为基础部分0,提高(1)1,提高(2)2
 uint32_t x_last1 = 0x7fffffff;
@@ -95,36 +92,49 @@ int main(void)
     Sysint_init();
     GPIO_init();
 
-    StatusReset();
     test_flag = 0;
+    if(test_flag == 0)StatusReset();
     Wheel_set(0,1);
     Wheel_set(0,2);
 
     while(1)
     {
-        /*药品检测*/
-        /*if(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)!=GPIO_PIN_3) //PF3有上拉,不等说明有药品放置
-        {
-            route_flag = 1;
-            //UARTprintf("YES\r\n");
-            //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 2);
-        }
-        else
-        {
-            route_flag = 0;
-            //GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 4);
-        }*/
-
         if(test_flag == 1) //测试程序
         {
+            /*位置环测试*/
+            /*pos_pid_flag = 0;
+            pid_flag = 0;
+
+            x_set1 = 950;
+            x_set2 = -950;
+            x_pid_flag = 1;
+            x_last_flag = 0;
+            SysCtlDelay(SysCtlClockGet()/3);
+            x_pid_flag = 0;
+            pos_pid_flag = 1;
+            pid_flag = 1;
+            SysCtlDelay(SysCtlClockGet()/3);
+            pos_pid_flag = 0;
+            pid_flag = 0;
+
+            x_set1 = -1200;
+            x_set2 = 1200;
+            x_pid_flag = 1;
+            x_last_flag = 0;
+            SysCtlDelay(SysCtlClockGet()/3);
+            x_pid_flag = 0;
+            pos_pid_flag = 1;
+            pid_flag = 1;
+            SysCtlDelay(SysCtlClockGet()/3);*/
+
             /*直线速度闭环测试*/
             /*pid_flag = 1;
             setspeed_flag = 1;
-            setspeed = 450;
+            setspeed = 400;
             SysCtlDelay(SysCtlClockGet()/3);
             setspeed = 0;
             SysCtlDelay(SysCtlClockGet()/3);
-            setspeed = -450;
+            setspeed = -400;
             SysCtlDelay(SysCtlClockGet()/3);
             setspeed = 0;
             SysCtlDelay(SysCtlClockGet()/3);*/
@@ -133,11 +143,11 @@ int main(void)
             /*x_pid_flag = 0;
             pid_flag = 1;
             setspeed_flag = 1;
-            setspeed = 450;
+            setspeed = 400;
             SysCtlDelay(SysCtlClockGet()/3);
             setspeed_flag = 0;
-            x_set1 = -500;
-            x_set2 = -500;
+            x_set1 = 450;
+            x_set2 = 450;
             x_pid_flag = 1;
             x_last_flag = 0;
             SysCtlDelay(SysCtlClockGet()/3);
@@ -145,26 +155,26 @@ int main(void)
             x_pid_flag = 0;
             pid_flag = 1;
             setspeed_flag = 1;
-            setspeed = -450;
+            setspeed = -400;
             SysCtlDelay(SysCtlClockGet()/3);
             setspeed_flag = 0;
-            x_set1 = 500;
-            x_set2 = 500;
+            x_set1 = -150;
+            x_set2 = -150;
             x_pid_flag = 1;
             x_last_flag = 0;
             SysCtlDelay(SysCtlClockGet()/3);*/
 
             /*直线闭环测试程序*/
-            /*x_set1 = 1250;
-            x_set2 = 1300;
+            /*x_set1 = 500;
+            x_set2 = 500;
             x_pid_flag = 1;
             x_last_flag = 0;
-            SysCtlDelay(3*SysCtlClockGet()/3);
-            x_set1 = -1300;
-            x_set2 = -1250;
+            SysCtlDelay(SysCtlClockGet()/3);
+            x_set1 = -500;
+            x_set2 = -500;
             x_pid_flag = 1;
             x_last_flag = 0;
-            SysCtlDelay(3*SysCtlClockGet()/3);*/
+            SysCtlDelay(SysCtlClockGet()/3);*/
             
             /*左右转测试*/
             /*x_set1 = 950;
@@ -398,12 +408,13 @@ void Wheel_set(float pwm,int num) //pwm从-1到1
          {
                     case 1:
                         PWMOutputState(PWM1_BASE,PWM_OUT_5_BIT,false);
+                        GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_3,0*GPIO_PIN_3);
                         break;
                     default:
                         PWMOutputState(PWM1_BASE,PWM_OUT_6_BIT,false);
+                        GPIOPinWrite(GPIO_PORTE_BASE,GPIO_PIN_0,0*GPIO_PIN_0);
                         break;
                 }
-        //PWMPulseWidthSet(PWM1_BASE,pwm_out,0);
     }
     else
     {
@@ -435,6 +446,8 @@ void TIMER0_IRQHandler() //10ms一次中断
     static float pwm2 = 0;
     static uint32_t x_next1 = 0x7fffffff;
     static uint32_t x_next2 = 0x7fffffff;
+    static int x1 = 0;
+    static int x2 = 0;
 
     //获取中断状态
     uint32_t status=TimerIntStatus(TIMER0_BASE, true);
@@ -442,120 +455,100 @@ void TIMER0_IRQHandler() //10ms一次中断
     TimerIntClear(TIMER0_BASE,status);
         /*setspeed PID processing*/
         /*Delta_speed>0 means clockwise*/
-        //if(uart_flag == 1 && test_flag == 0) //有串口数据更新且不处于测试状态
-        if(status_hand != 0 && i%5==0 && test_flag == 0) //处于模拟握手协议中
+        if(test_flag == 0) //处于模拟握手协议中
         {
             StatusDeal(0);
         }
 
-        if(i%4==0 && data_flag == 1 && theta_pid_flag==1 && b_pid_flag==1) // 0.10s theta pid (Using "%" matters!)
+        if(time_count > 0)time_count--;
+
+        if(data_flag == 1 && pos_pid_flag==1) // 0.10s theta pid (Using "%" matters!)
         {
-            theta_speed = PID_theta_update(theta);
-            b_speed = PID_b_update(b);
+            pos_speed = PID_pos_update(pos);
             data_flag = 0;
         }
 
         if(i%4==0 && x_pid_flag==1) // 0.08s x pid (Using "%" matters!)
         {
-            if(x_last_flag == 0)
+            if(x_last_flag == 0) //重置xpid
             {
                 x_last1 = QEIPositionGet(QEI0_BASE);
                 x_last2 = QEIPositionGet(QEI1_BASE);
-                x_next1 = 0x7fffffff;
-                x_next2 = 0x7fffffff;
                 x_last_flag = 1;
             }
             else
             {
-                    speed1 = (int)(QEIPositionGet(QEI0_BASE)-x_next1)*60.0/(0.02*round_pulse); //考虑到电机正反转情况,从中间值0x7fffffff开始计数
-                    speed2 = (int)(x_next2-QEIPositionGet(QEI1_BASE))*60.0/(0.02*round_pulse);
-                    x_next1 = QEIPositionGet(QEI0_BASE);
-                    x_next2 = QEIPositionGet(QEI1_BASE);
+                x1 = (int)(QEIPositionGet(QEI0_BASE)-x_last1);
+                x2 = (int)(x_last2-QEIPositionGet(QEI1_BASE));
 
-                    x_speed1 = PID_x_update(x_set1,(int)(x_next1-x_last1),1); //用当前编码盘数据作位移数据
-                    x_speed2 = PID_x_update(x_set2,(int)(x_last2-x_next2),2);
-                    Wheel_set(x_speed1/K_round,1);
-                    Wheel_set(x_speed2/K_round,2);
+                x_speed1 = PID_x_update(x_set1,x1,1); //用当前编码盘数据作位移数据
+                x_speed2 = PID_x_update(x_set2,x2,2);
 
                 if(test_flag == 1)
                 {
-                    f_char_printf(x_speed1);
-                    UARTprintf(",");
-                    f_char_printf(x_speed2);
-                    UARTprintf(",");
-                    f_char_printf(x_set1);
-                    UARTprintf(",");
-                    f_char_printf(x_set2);
-                    UARTprintf(",%d,%d\n",(int)(QEIPositionGet(QEI0_BASE)-x_last1),(int)(x_last2-QEIPositionGet(QEI1_BASE)));
                 }
             }
         }
-            if(x_pid_flag == 0 && pid_flag == 1) // 0.02s speed pid
-            {
-                if(pid_reset_flag == 1)
-                {
-                    QEIPositionSet(QEI0_BASE, 0x7fffffff);
-                    QEIPositionSet(QEI1_BASE, 0x7fffffff);
-                    pid_reset_flag = 0;
-                }
-                else
-                {
-                    speed1 = (int)(QEIPositionGet(QEI0_BASE)-0x7fffffff)*11; //考虑到电机正反转情况,从中间值0x7fffffff开始计数
-                    speed2 = (int)(0x7fffffff-QEIPositionGet(QEI1_BASE))*11;
-                    QEIPositionSet(QEI0_BASE, 0x7fffffff);
-                    QEIPositionSet(QEI1_BASE, 0x7fffffff);
+        if(pid_reset_flag == 1) //重置当前编码器
+        {
+            QEIPositionSet(QEI0_BASE, 0x7fffffff);
+            QEIPositionSet(QEI1_BASE, 0x7fffffff);
+            x_next1 = 0x7fffffff;
+            x_next2 = 0x7fffffff;
+            pid_reset_flag = 0;
+        }
+        else
+        {
+            speed1 = (int)(QEIPositionGet(QEI0_BASE)-x_next1)*11; //考虑到电机正反转情况,从中间值0x7fffffff开始计数
+            speed2 = (int)(x_next2-QEIPositionGet(QEI1_BASE))*11;
+            x_next1 = QEIPositionGet(QEI0_BASE);
+            x_next2 = QEIPositionGet(QEI1_BASE);
 
-                    pwm1 = PID_speed_update(setspeed*setspeed_flag-theta_pid_flag*theta_speed+b_pid_flag*b_speed,speed1,1);
-                    pwm2 = PID_speed_update(setspeed*setspeed_flag+theta_pid_flag*theta_speed-b_pid_flag*b_speed,speed2,2);
-                    Wheel_set(pwm1/K_round,1);
-                    Wheel_set(pwm2/K_round,2);
+            pwm1 += PID_speed_update(setspeed*setspeed_flag+pos_speed*pos_pid_flag+x_pid_flag*x_speed1,speed1,1);
+            pwm2 += PID_speed_update(setspeed*setspeed_flag-pos_speed*pos_pid_flag+x_pid_flag*x_speed2,speed2,2);
+            Wheel_set(pwm1/K_round,1);
+            Wheel_set(pwm2/K_round,2);
+
+            /*f_char_printf(pos);
+            UARTprintf(",");
+            f_char_printf(pos_speed);
+            UARTprintf("\n");*/
  
-                }
+        }
 
-                if(test_flag == 1)
-                {
-                    /*f_char_printf(pwm1);
-                    UARTprintf(",");
-                    f_char_printf(pwm2);
-                    UARTprintf(",");
-                    f_char_printf(speed1);
-                    UARTprintf(",");
-                    f_char_printf(speed2);
-                    UARTprintf(",");
-                    f_char_printf(setspeed);
-                    UARTprintf("\n");*/
-                }
-                /*f_char_printf(theta);
-                UARTprintf(",");
-                f_char_printf(b);
-                UARTprintf("\n");*/
+        if(test_flag == 1)
+        {
+            //f_char_printf(pwm1);
+            //UARTprintf(",");
+            //f_char_printf(pwm2);
+            //UARTprintf(",");
+            f_char_printf(speed1);
+            UARTprintf(",");
+            f_char_printf(speed2);
+            UARTprintf(","); 
+            f_char_printf(x_speed1);
+            UARTprintf(",");
+            f_char_printf(x_speed2);
+            UARTprintf(",");
+            f_char_printf(x_set1);
+            UARTprintf(",");
+            f_char_printf(x_set2);
+            UARTprintf(",");
+            f_char_printf(setspeed);
+            UARTprintf(",");
+            f_char_printf(x1);
+            UARTprintf(",");
+            f_char_printf(x2);
+            UARTprintf("\n");
+        }
 
-                /*f_char_printf(pwm1);
-                UARTprintf(",");
-                f_char_printf(pwm2);
-                UARTprintf(",");*/
-                /*f_char_printf(x_speed1);
-                UARTprintf(",");
-                f_char_printf(x_speed2);
-                UARTprintf(",");
-                f_char_printf(speed1);
-                UARTprintf(",");
-                f_char_printf(speed2);
-                UARTprintf("\n");*/
-            }
-            else if(x_pid_flag == 0 && pid_flag == 0)
-            {
-                Wheel_set(0,1);
-                Wheel_set(0,2);
-            }
-
-            if(i>100) // 0.5s reset i
-            {
-                /*return pulse count*/
-                //printf("%d, %d\r\n",pwm1,pwm2);
-                i=0;
-            }
-            i++;
+        if(i>100) // 0.5s reset i
+        {
+            /*return pulse count*/
+            //printf("%d, %d\r\n",pwm1,pwm2);
+            i=0;
+        }
+        i++;
 }
 
 void UART1_Handler() //用户/双车通信串口
@@ -574,8 +567,8 @@ void UART1_Handler() //用户/双车通信串口
                     {
                            if(test_flag == 1)
                            {
-                               UARTprintf("hello\r\n");
-                               //UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
+                               //UARTprintf("hello\r\n");
+                               UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
                            }
                            else if(strcmp((char*)rData1,"yes ") == 0)
                            {
@@ -609,7 +602,6 @@ void UART1_Handler() //用户/双车通信串口
                            rDataCount1=0; //清空接收长度
                 }
                     rx_buf1=0;
-        //UARTCharPutNonBlocking(UART0_BASE, rxbuf);
     }
 }
 
@@ -627,35 +619,42 @@ void UART5_Handler() //树莓派串口
                 rData5[rDataCount5-1]=rx_buf5;
             if(rx_buf5==0x20)// (ascii)0x14 = " "
             {
-                if(test_flag == 1)  //测试模式
+                if(rData5[0]>='1' && rData5[0]<='8' && rData5[1] == ' ') //单个数字,目标病房信息
                 {
-                    //UARTprintf("berrypie\r\n");
-                }
-                else if(rData5[0]>='1' && rData5[0]<='8' && rData5[1] == ' ') //单个数字,目标病房信息
-                {
-                    StatusDeal(2);
+                    if(test_flag == 1)
+                    {
+                        UARTCharPutNonBlocking(UART5_BASE, 'r');
+                    }
+                    else
+                    {
+                        StatusDeal(2);
+                    }
                 }
                 else if(((rData5[0]>='a' && rData5[0]<='z')||rData5[0]=='S') && rData5[1]==' ') //循迹停止或有识别信息
                 {
-                    StatusDeal(1);
-                    UARTprintf("message\r\n");
+                    if(test_flag == 1)
+                    {
+                        UARTCharPutNonBlocking(UART5_BASE, 'r');
+                    }
+                    else
+                    {
+                        UARTprintf("message=%c\r\n",rData5[0]);
+                        StatusDeal(1); //进入协议
+                    }
                 }
-                else if(status_hand == 0 || status_hand == 7 ||status_hand == 8)   //循迹信息,"theta?b "
+                else if(status_hand == 0 || status_hand == 7 || test_flag == 1)   //循迹信息,"theta?b "
                 {
-                    theta = strtof((char*)rData5,&endptr);
-                    endptr++;
-                    b = strtod(endptr,NULL);
+
+                    pos = strtod((char*)rData5,&endptr);
+
                     endptr = (char*)rData5;
                     data_flag = 1;
                     if(status_hand == 7 && uart_flag > 0)uart_flag --;
-                    if(status_hand == 8 && keep_flag > 0)keep_flag --;
                 }
-
                 memset(rData5,0,sizeof(rData5)); //清空缓存数组
                 rDataCount5=0; //清空接收长度
             }
             rx_buf5=0;
-        //UARTCharPutNonBlocking(UART1_BASE, rxbuf);
     }
 }
 
@@ -674,4 +673,11 @@ void f_char_printf(float Xangle)
     }
 }
 
-
+uint8_t Drug_Read(void) //药品检测
+{
+    if(GPIOPinRead(GPIO_PORTE_BASE, GPIO_PIN_3)!=GPIO_PIN_3) //PF3有上拉,不等说明有药品放置
+    {
+        return 1;
+    }
+    return 0;
+}
