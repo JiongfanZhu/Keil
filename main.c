@@ -36,7 +36,7 @@ float Get_Data(void);
 void f_char_printf(float Xangle);
 uint8_t Drug_Read(void);
 
-#define SETSPEED 390
+#define SETSPEED 350
 #define round_pulse 390 //编码盘每圈脉冲数
 #define K_round 1000.0 //pwm变换系数
 
@@ -74,6 +74,7 @@ int x_last_flag = 0;    //xpid开始准备标识
 uint8_t data_flag = 0; //角度截距信息有效标识
 uint8_t pid_reset_flag = 0; //速度pid重置标识
 uint8_t time_count = 0;
+uint8_t keep = 0; //保持循迹标识
 
 uint8_t question = 0; //题目选择,默认为基础部分0,提高(1)1,提高(2)2
 uint32_t x_last1 = 0x7fffffff;
@@ -216,10 +217,6 @@ int main(void)
                 case 2: //绿灯亮
                     GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 4);
             }
-        }
-        else
-        {
-            GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_1|GPIO_PIN_2, 0);
         }
     }
 
@@ -655,6 +652,7 @@ void UART5_Handler() //树莓派串口
 
                     endptr = (char*)rData5;
                     data_flag = 1;
+                    keep = 0;
                     if(status_hand == 7 && uart_flag > 0)uart_flag --;
                 }
                 memset(rData5,0,sizeof(rData5)); //清空缓存数组

@@ -35,6 +35,7 @@ extern float speed2;
 extern float pos;
 extern float pos_speed;
 extern uint8_t rData5[30];
+extern uint8_t keep;
 
 void StatusReset(void); //状态重置
 void StatusDeal(uint8_t message); //状态更改与任务分配
