@@ -22,25 +22,25 @@ void PID_init(void){
     pid1_v.SetSpeed=0.0;    pid1_v.ActualSpeed=0.0;
     pid1_v.err=0.0;         pid1_v.err_last=0.0;
     pid1_v.err_next=0.0;    pid1_v.voltage=0.0;
-    pid1_v.integral=0.0;    pid1_v.Kp=0.65;
-    pid1_v.Ki=0.002;          pid1_v.Kd=0.03;
+    pid1_v.integral=0.0;    pid1_v.Kp=0.45;
+    pid1_v.Ki=0.0025;          pid1_v.Kd=0.003;
 
     pid2_v.SetSpeed=0.0;    pid2_v.ActualSpeed=0.0;
     pid2_v.err=0.0;         pid2_v.err_last=0.0;
     pid2_v.err_next=0.0;    pid2_v.voltage=0.0;
-    pid2_v.integral=0.0;    pid2_v.Kp=0.65;
-    pid2_v.Ki=0.002;          pid2_v.Kd=0.03;
+    pid2_v.integral=0.0;    pid2_v.Kp=0.48;
+    pid2_v.Ki=0.002;          pid2_v.Kd=0.007;
 
     pid_x1.SetSpeed=0.0;     pid_x1.ActualSpeed=0.0;
     pid_x1.err=0.0;          pid_x1.err_last=0.0;
     pid_x1.err_next=0.0;     pid_x1.voltage=0.0;
-    pid_x1.integral=0.0;     pid_x1.Kp=0.3;
-    pid_x1.Ki=0;           pid_x1.Kd=0;
+    pid_x1.integral=0.0;     pid_x1.Kp=0.6;
+    pid_x1.Ki=0;           pid_x1.Kd=0.05;
 
     pid_x2.SetSpeed=0.0;     pid_x2.ActualSpeed=0.0;
     pid_x2.err=0.0;          pid_x2.err_last=0.0;
     pid_x2.err_next=0.0;     pid_x2.voltage=0.0;
-    pid_x2.integral=0.0;     pid_x2.Kp=0.3;
+    pid_x2.integral=0.0;     pid_x2.Kp=0.15;
     pid_x2.Ki=0;           pid_x2.Kd=0;
 
     pid_theta.SetSpeed=0.0; pid_theta.ActualSpeed=0.0;
@@ -55,11 +55,11 @@ void PID_init(void){
     pid_b.Kp=0.3;      pid_b.Ki=0;
     pid_b.Kd=0.015;
 
-    pid_pos.SetSpeed=10.0; pid_pos.ActualSpeed=0.0;
+    pid_pos.SetSpeed=18.0; pid_pos.ActualSpeed=0.0;
     pid_pos.err=0.0;      pid_pos.err_last=0.0;
     pid_pos.voltage=0.0;  pid_pos.integral=0.0;
-    pid_pos.Kp=1.7;      pid_pos.Ki=0.002;
-    pid_pos.Kd=0.01;
+    pid_pos.Kp=1.75;      pid_pos.Ki=0.001;
+    pid_pos.Kd=0.003;
 }
 
 float PID_x_update(float set_x,int actual_x,int flag) //Î»ÒÆÊ½

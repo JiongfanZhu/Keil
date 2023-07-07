@@ -36,7 +36,7 @@ float Get_Data(void);
 void f_char_printf(float Xangle);
 uint8_t Drug_Read(void);
 
-#define SETSPEED 390
+#define SETSPEED 330
 #define round_pulse 390 //编码盘每圈脉冲数
 #define K_round 1000.0 //pwm变换系数
 
@@ -66,6 +66,8 @@ int rDataFlag5 = 0;
 int rDataFlag1 = 0;
 
 extern uint8_t status_hand;
+extern uint8_t back_flag;
+
 uint8_t route_flag = 0;     //药品状态标志位
 uint8_t test_flag = 1;      //测试模式
 uint8_t LED_flag = 0;       //0不亮,1亮红灯,2亮绿灯
@@ -132,11 +134,11 @@ int main(void)
             /*直线速度闭环测试*/
             /*pid_flag = 1;
             setspeed_flag = 1;
-            setspeed = 400;
+            setspeed = 330;
             SysCtlDelay(SysCtlClockGet()/3);
             setspeed = 0;
             SysCtlDelay(SysCtlClockGet()/3);
-            setspeed = -400;
+            setspeed = -330;
             SysCtlDelay(SysCtlClockGet()/3);
             setspeed = 0;
             SysCtlDelay(SysCtlClockGet()/3);*/
@@ -201,7 +203,6 @@ int main(void)
             x_last_flag = 0;
             x_pid_flag = 1;
             SysCtlDelay(3*SysCtlClockGet()/3);*/
-
 
         }
         else
@@ -458,7 +459,7 @@ void TIMER0_IRQHandler() //10ms一次中断
     TimerIntClear(TIMER0_BASE,status);
         /*setspeed PID processing*/
         /*Delta_speed>0 means clockwise*/
-        if(status_hand!=0 && test_flag == 0) //处于模拟握手协议中
+        if(i%3==0 && test_flag == 0) //处于模拟握手协议中
         {
             StatusDeal(0);
         }
@@ -507,8 +508,8 @@ void TIMER0_IRQHandler() //10ms一次中断
             x_next1 = QEIPositionGet(QEI0_BASE);
             x_next2 = QEIPositionGet(QEI1_BASE);
 
-            pwm1 += PID_speed_update(setspeed*setspeed_flag+pos_speed*pos_pid_flag+x_pid_flag*x_speed1,speed1,1);
-            pwm2 += PID_speed_update(setspeed*setspeed_flag-pos_speed*pos_pid_flag+x_pid_flag*x_speed2,speed2,2);
+            pwm1 += PID_speed_update(setspeed*setspeed_flag+x_pid_flag*x_speed1+pos_speed*pos_pid_flag,speed1,1);
+            pwm2 += PID_speed_update((setspeed*setspeed_flag+x_pid_flag*x_speed2)-pos_speed*pos_pid_flag,speed2,2);
             Wheel_set(pwm1/K_round,1);
             Wheel_set(pwm2/K_round,2);
 
@@ -570,7 +571,8 @@ void UART1_Handler() //用户/双车通信串口
                     {
                         if(test_flag == 1)
                         {
-                            UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
+                            //UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
+                            //UARTprintf("send\r\n");
                         }
 
                         if(strcmp((char*)rData1,"ask ") == 0) //响应母车信号
@@ -582,6 +584,7 @@ void UART1_Handler() //用户/双车通信串口
                         {
                             if(strcmp((char*)rData1,"Q1 ") == 0) //提高部分第1问
                             {
+                                UARTprintf("Q1\r\n");
                                 question = 1;
                             }
                             else if(strcmp((char*)rData1,"Q2 ") == 0) //提高部分第2问
@@ -595,10 +598,12 @@ void UART1_Handler() //用户/双车通信串口
                             if(strcmp((char*)rData1,"l ") == 0)
                             {
                                 route_flag = 1; //母车左转
+                                UARTprintf("turn left\r\n");
                             }
                             else if(strcmp((char*)rData1,"r ") == 0)
                             {
                                 route_flag = 2;
+                                UARTprintf("turn right\r\n");
                             }
                         }
                         else if(question == 2)
@@ -619,15 +624,21 @@ void UART1_Handler() //用户/双车通信串口
                             {
                                 route_flag = 4;
                             }
+                            else if(strcmp((char*)rData1,"conflict ") == 0) //与母车有冲突
+                            {
+                                back_flag = 1;
+                            }
                         }
 
                         if(strcmp((char*)rData1,"ok ") == 0) //母车释放阻塞信号
                         {
-                            StatusDeal(3);
+                            UARTprintf("release received\r\n");
+                            StatusDeal(5);
                         }
                         else if(strcmp((char*)rData1,"X ") == 0) //子车启动信号
                         {
-                            StatusDeal(3);
+                            UARTprintf("start received\r\n");
+                            StatusDeal(4);
                         }
                         /*else // para set
                         {
@@ -652,9 +663,16 @@ void UART5_Handler() //树莓派串口
         rx_buf5=UARTCharGetNonBlocking(UART5_BASE); //从串口接收FIFO中读取一个字符，非阻塞函数
                 rDataCount5++;
                 rData5[rDataCount5-1]=rx_buf5;
+
             if(rx_buf5==0x20)// (ascii)0x14 = " "
             {
-                if((rData5[0]=='s' || rData5[0]=='b') && rData5[1]==' ') //循迹停止或有识别信息
+                if(test_flag == 1)
+                {
+                    //UARTprintf("%s\r\n",rData5);
+                }
+
+
+                else if((rData5[0]=='s' || rData5[0]=='b') && rData5[1]==' ') //循迹停止或有识别信息
                 {
                     if(test_flag == 1)
                     {
@@ -672,7 +690,7 @@ void UART5_Handler() //树莓派串口
 
                     endptr = (char*)rData5;
                     data_flag = 1;
-                    keep = 0;
+                    if(keep>0) keep--;
                     if(status_hand == 7 && uart_flag > 0)uart_flag --;
                 }
                 memset(rData5,0,sizeof(rData5)); //清空缓存数组
