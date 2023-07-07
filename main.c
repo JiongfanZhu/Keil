@@ -35,8 +35,9 @@ void USART_PID_Adjust(void);
 float Get_Data(void);
 void f_char_printf(float Xangle);
 uint8_t Drug_Read(void);
+void Question_Read(void);
 
-#define SETSPEED 350
+#define SETSPEED 400
 #define round_pulse 390 //编码盘每圈脉冲数
 #define K_round 1000.0 //pwm变换系数
 
@@ -66,6 +67,9 @@ int rDataFlag5 = 0;
 int rDataFlag1 = 0;
 
 extern uint8_t status_hand;
+extern uint8_t target1;
+extern uint8_t target2;
+
 uint8_t route_flag = 0;     //药品状态标志位
 uint8_t test_flag = 1;      //测试模式
 uint8_t LED_flag = 0;       //0不亮,1亮红灯,2亮绿灯
@@ -97,7 +101,23 @@ int main(void)
     if(test_flag == 0)StatusReset();
     Wheel_set(0,1);
     Wheel_set(0,2);
-    //SysCtlDelay(2*SysCtlClockGet()/3);
+    if(test_flag == 0)SysCtlDelay(0.5*SysCtlClockGet()/3); //等1秒
+    /*if(question == 0 || question == 1)
+    {
+        UARTCharPutNonBlocking(UART5_BASE, '0');
+        if(question == 1)UARTprintf("Q1 ");
+    }
+    else
+    {
+        UARTCharPutNonBlocking(UART5_BASE, '1');
+        UARTprintf("Q2 ");
+        setspeed = 330;
+    }*/
+    question = 2;
+    UARTCharPutNonBlocking(UART5_BASE, '1');
+    UARTprintf("Q2 ");
+    setspeed = 330;
+
 
     while(1)
     {
@@ -366,8 +386,10 @@ void GPIO_init()
     //配置PE1引脚为红色LED对应GPIO口
     //配置PE2引脚为绿色LED对应GPIO口
     //配置PE3引脚为药品输入对应GPIO口
+    //配置PD0引脚为题目选择对应GPIO口
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);       //使能外设
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
 
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE,GPIO_PIN_3); //该函数默认引脚推挽,无上下拉
     GPIOPinTypeGPIOOutput(GPIO_PORTE_BASE,GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2);
@@ -377,6 +399,10 @@ void GPIO_init()
     //配置PE3引脚为输入,推挽模式,内部上拉
     GPIODirModeSet(GPIO_PORTE_BASE,GPIO_PIN_3, GPIO_DIR_MODE_IN);
     GPIOPadConfigSet(GPIO_PORTE_BASE,GPIO_PIN_3,GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+    //配置PD0引脚为输入,推挽模式,内部上拉
+    GPIODirModeSet(GPIO_PORTD_BASE,GPIO_PIN_0, GPIO_DIR_MODE_IN);
+    GPIOPadConfigSet(GPIO_PORTD_BASE,GPIO_PIN_0,GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+
 }
 
 void Wheel_set(float pwm,int num) //pwm从-1到1
@@ -458,7 +484,7 @@ void TIMER0_IRQHandler() //10ms一次中断
     TimerIntClear(TIMER0_BASE,status);
         /*setspeed PID processing*/
         /*Delta_speed>0 means clockwise*/
-        if(test_flag == 0) //处于模拟握手协议中
+        if(i%3 == 0 || test_flag == 0) //处于模拟握手协议中
         {
             StatusDeal(0);
         }
@@ -570,10 +596,9 @@ void UART1_Handler() //用户/双车通信串口
                     {
                            if(test_flag == 1)
                            {
-                               //UARTprintf("hello\r\n");
                                UARTCharPutNonBlocking(UART5_BASE, rData1[0]); //发送目标点信息
                            }
-                           else if(strcmp((char*)rData1,"yes ") == 0)
+                           /*else if(strcmp((char*)rData1,"yes ") == 0)
                            {
                                 route_flag = 1;
                            }
@@ -584,19 +609,17 @@ void UART1_Handler() //用户/双车通信串口
                            else if(strcmp((char*)rData1,"reset ") == 0)
                            {
                                 StatusReset();
-                           }
-                           /*else if(strcmp((char*)rData1,"Q1 ") == 0) //提高部分第1问
+                           }*/
+                           else if(strcmp((char*)rData1,"answer ") == 0) //仅在收到answer时跳出基础部分
                            {
-                                question = 1;
-                           }
-                           else if(strcmp((char*)rData1,"Q2 ") == 0) //提高部分第2问
-                           {
-                                question = 2;
+                                if(question==0)question = 1; //先置为1
+                                Question_Read(); //读引脚,确定题目
+                                UARTprintf("Q=%d\r\n",question);
                            }
                            else if(strcmp((char*)rData1,"ok ") == 0) //子车释放阻塞信号
                            {
                                 StatusDeal(3);
-                           }*/
+                           }
                            else // para set
                            {
                                USART_PID_Adjust();//数据解析和参数赋值函数
@@ -628,10 +651,22 @@ void UART5_Handler() //树莓派串口
                     {
                         UARTCharPutNonBlocking(UART5_BASE, 'r');
                     }
-                    else
+                    else if(target1 == 0) //读取第一个数字
                     {
-                        StatusDeal(2);
+                        target1 = rData5[0]-'0';
+                        UARTprintf("target1=%d\r\n",target1);
                     }
+                    else if(target2 == 0 && question == 2)
+                    {
+                        target2 = rData5[0]-'0';
+                        UARTprintf("target2=%d\r\n",target2);
+                    }
+                    StatusDeal(2);
+                }
+                else if((rData5[0]>='0' && rData5[0]<='3') && (rData5[1]>='0' && rData5[1]<='3') && rData5[2] == ' ') //双数字,转向信息
+                {
+                    UARTprintf("Q2=%s\r\n",rData5);
+                    StatusDeal(7);
                 }
                 else if(((rData5[0]>='a' && rData5[0]<='z')||rData5[0]=='S') && rData5[1]==' ') //循迹停止或有识别信息
                 {
@@ -652,7 +687,7 @@ void UART5_Handler() //树莓派串口
 
                     endptr = (char*)rData5;
                     data_flag = 1;
-                    keep = 0;
+                    if(keep>0) keep--;
                     if(status_hand == 7 && uart_flag > 0)uart_flag --;
                 }
                 memset(rData5,0,sizeof(rData5)); //清空缓存数组
@@ -684,4 +719,20 @@ uint8_t Drug_Read(void) //药品检测
         return 1;
     }
     return 0;
+}
+
+void Question_Read(void) //题目检测
+{
+    if(question != 0)
+    {
+        if(GPIOPinRead(GPIO_PORTD_BASE, GPIO_PIN_0)==GPIO_PIN_0) //PF3有上拉,不等说明有药品放置
+        {
+            question = 1;
+        }
+        else
+        {
+            question = 2;
+        }
+    }
+
 }

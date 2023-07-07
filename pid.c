@@ -22,14 +22,14 @@ void PID_init(void){
     pid1_v.SetSpeed=0.0;    pid1_v.ActualSpeed=0.0;
     pid1_v.err=0.0;         pid1_v.err_last=0.0;
     pid1_v.err_next=0.0;    pid1_v.voltage=0.0;
-    pid1_v.integral=0.0;    pid1_v.Kp=0.65;
-    pid1_v.Ki=0.002;          pid1_v.Kd=0.03;
+    pid1_v.integral=0.0;    pid1_v.Kp=0.25;
+    pid1_v.Ki=0.002;          pid1_v.Kd=0.004;
 
     pid2_v.SetSpeed=0.0;    pid2_v.ActualSpeed=0.0;
     pid2_v.err=0.0;         pid2_v.err_last=0.0;
     pid2_v.err_next=0.0;    pid2_v.voltage=0.0;
-    pid2_v.integral=0.0;    pid2_v.Kp=0.65;
-    pid2_v.Ki=0.002;          pid2_v.Kd=0.03;
+    pid2_v.integral=0.0;    pid2_v.Kp=0.25;
+    pid2_v.Ki=0.002;          pid2_v.Kd=0.004;
 
     pid_x1.SetSpeed=0.0;     pid_x1.ActualSpeed=0.0;
     pid_x1.err=0.0;          pid_x1.err_last=0.0;
@@ -55,7 +55,7 @@ void PID_init(void){
     pid_b.Kp=0.3;      pid_b.Ki=0;
     pid_b.Kd=0.015;
 
-    pid_pos.SetSpeed=10.0; pid_pos.ActualSpeed=0.0;
+    pid_pos.SetSpeed=0.0; pid_pos.ActualSpeed=0.0;
     pid_pos.err=0.0;      pid_pos.err_last=0.0;
     pid_pos.voltage=0.0;  pid_pos.integral=0.0;
     pid_pos.Kp=1.7;      pid_pos.Ki=0.002;
