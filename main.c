@@ -37,7 +37,7 @@ void f_char_printf(float Xangle);
 uint8_t Drug_Read(void);
 void Question_Read(void);
 
-#define SETSPEED 400
+#define SETSPEED 380
 #define round_pulse 390 //编码盘每圈脉冲数
 #define K_round 1000.0 //pwm变换系数
 
@@ -101,23 +101,20 @@ int main(void)
     if(test_flag == 0)StatusReset();
     Wheel_set(0,1);
     Wheel_set(0,2);
-    if(test_flag == 0)SysCtlDelay(0.5*SysCtlClockGet()/3); //等1秒
-    /*if(question == 0 || question == 1)
+    if(test_flag == 0)SysCtlDelay(SysCtlClockGet()/3); //等1秒
+    Question_Read();
+    if(question != 2)
     {
         UARTCharPutNonBlocking(UART5_BASE, '0');
-        if(question == 1)UARTprintf("Q1 ");
+        UARTprintf("Q1 ");
     }
     else
     {
         UARTCharPutNonBlocking(UART5_BASE, '1');
         UARTprintf("Q2 ");
         setspeed = 330;
-    }*/
-    question = 2;
-    UARTCharPutNonBlocking(UART5_BASE, '1');
-    UARTprintf("Q2 ");
-    setspeed = 330;
-
+    }
+    //UARTprintf("0 send\r\n");
 
     while(1)
     {
@@ -224,7 +221,7 @@ int main(void)
 
 
         }
-        else if(question == 0)
+        else if(question != 2)
         {
             switch(LED_flag)
             {
@@ -610,20 +607,31 @@ void UART1_Handler() //用户/双车通信串口
                            {
                                 StatusReset();
                            }*/
-                           else if(strcmp((char*)rData1,"answer ") == 0) //仅在收到answer时跳出基础部分
+                           /*else if(strcmp((char*)rData1,"answer ") == 0) //仅在收到answer时跳出基础部分
                            {
                                 if(question==0)question = 1; //先置为1
                                 Question_Read(); //读引脚,确定题目
-                                UARTprintf("Q=%d\r\n",question);
-                           }
+                                //UARTprintf("Q=%d\r\n",question);
+                                if(question == 0 || question == 1)
+                                {
+                                    UARTCharPutNonBlocking(UART5_BASE, '0');
+                                    if(question == 1)UARTprintf("Q1 ");
+                                }
+                                else
+                                {
+                                    UARTCharPutNonBlocking(UART5_BASE, '1');
+                                    UARTprintf("Q2 ");
+                                    setspeed = 330;
+                                }
+                           }*/
                            else if(strcmp((char*)rData1,"ok ") == 0) //子车释放阻塞信号
                            {
                                 StatusDeal(3);
                            }
-                           else // para set
+                           /*else // para set
                            {
                                USART_PID_Adjust();//数据解析和参数赋值函数
-                           }
+                           }*/
                            memset(rData1,0,sizeof(rData1)); //清空缓存数组
                            rDataCount1=0; //清空接收长度
                 }
@@ -654,18 +662,18 @@ void UART5_Handler() //树莓派串口
                     else if(target1 == 0) //读取第一个数字
                     {
                         target1 = rData5[0]-'0';
-                        UARTprintf("target1=%d\r\n",target1);
+                        //UARTprintf("target1=%d\r\n",target1);
                     }
                     else if(target2 == 0 && question == 2)
                     {
                         target2 = rData5[0]-'0';
-                        UARTprintf("target2=%d\r\n",target2);
+                        //UARTprintf("target2=%d\r\n",target2);
                     }
                     StatusDeal(2);
                 }
                 else if((rData5[0]>='0' && rData5[0]<='3') && (rData5[1]>='0' && rData5[1]<='3') && rData5[2] == ' ') //双数字,转向信息
                 {
-                    UARTprintf("Q2=%s\r\n",rData5);
+                    //UARTprintf("Q2=%s\r\n",rData5);
                     StatusDeal(7);
                 }
                 else if(((rData5[0]>='a' && rData5[0]<='z')||rData5[0]=='S') && rData5[1]==' ') //循迹停止或有识别信息
@@ -676,7 +684,7 @@ void UART5_Handler() //树莓派串口
                     }
                     else
                     {
-                        UARTprintf("message=%c\r\n",rData5[0]);
+                        //UARTprintf("message=%c\r\n",rData5[0]);
                         StatusDeal(1); //进入协议
                     }
                 }
@@ -723,8 +731,7 @@ uint8_t Drug_Read(void) //药品检测
 
 void Question_Read(void) //题目检测
 {
-    if(question != 0)
-    {
+
         if(GPIOPinRead(GPIO_PORTD_BASE, GPIO_PIN_0)==GPIO_PIN_0) //PF3有上拉,不等说明有药品放置
         {
             question = 1;
@@ -733,6 +740,5 @@ void Question_Read(void) //题目检测
         {
             question = 2;
         }
-    }
 
 }

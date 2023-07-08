@@ -58,7 +58,7 @@ void PID_init(void){
     pid_pos.SetSpeed=0.0; pid_pos.ActualSpeed=0.0;
     pid_pos.err=0.0;      pid_pos.err_last=0.0;
     pid_pos.voltage=0.0;  pid_pos.integral=0.0;
-    pid_pos.Kp=1.7;      pid_pos.Ki=0.002;
+    pid_pos.Kp=1.65;      pid_pos.Ki=0.002;
     pid_pos.Kd=0.01;
 }
 
