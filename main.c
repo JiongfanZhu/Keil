@@ -77,6 +77,7 @@ uint8_t data_flag = 0; //角度截距信息有效标识
 uint8_t pid_reset_flag = 0; //速度pid重置标识
 uint8_t time_count = 0;
 uint8_t keep = 0;
+uint8_t conflict_flag = 0;
 
 uint8_t question = 0; //题目选择,默认为基础部分0,提高(1)1,提高(2)2
 uint32_t x_last1 = 0x7fffffff;
@@ -508,7 +509,7 @@ void TIMER0_IRQHandler() //10ms一次中断
             x_next1 = QEIPositionGet(QEI0_BASE);
             x_next2 = QEIPositionGet(QEI1_BASE);
 
-            pwm1 += PID_speed_update(setspeed*setspeed_flag+x_pid_flag*x_speed1+pos_speed*pos_pid_flag,speed1,1);
+            pwm1 += PID_speed_update(0.92*setspeed*setspeed_flag+x_pid_flag*x_speed1+pos_speed*pos_pid_flag,speed1,1);
             pwm2 += PID_speed_update((setspeed*setspeed_flag+x_pid_flag*x_speed2)-pos_speed*pos_pid_flag,speed2,2);
             Wheel_set(pwm1/K_round,1);
             Wheel_set(pwm2/K_round,2);
@@ -577,6 +578,7 @@ void UART1_Handler() //用户/双车通信串口
 
                         if(strcmp((char*)rData1,"ask ") == 0) //响应母车信号
                         {
+                            StatusReset();
                             UARTprintf("answer ");
                         }
 
@@ -584,7 +586,7 @@ void UART1_Handler() //用户/双车通信串口
                         {
                             if(strcmp((char*)rData1,"Q1 ") == 0) //提高部分第1问
                             {
-                                UARTprintf("Q1\r\n");
+                                //UARTprintf("Q1\r\n");
                                 question = 1;
                             }
                             else if(strcmp((char*)rData1,"Q2 ") == 0) //提高部分第2问
@@ -598,12 +600,12 @@ void UART1_Handler() //用户/双车通信串口
                             if(strcmp((char*)rData1,"l ") == 0)
                             {
                                 route_flag = 1; //母车左转
-                                UARTprintf("turn left\r\n");
+                                //UARTprintf("turn left\r\n");
                             }
                             else if(strcmp((char*)rData1,"r ") == 0)
                             {
                                 route_flag = 2;
-                                UARTprintf("turn right\r\n");
+                                //UARTprintf("turn right\r\n");
                             }
                         }
                         else if(question == 2)
@@ -627,17 +629,18 @@ void UART1_Handler() //用户/双车通信串口
                             else if(strcmp((char*)rData1,"conflict ") == 0) //与母车有冲突
                             {
                                 back_flag = 1;
+                                conflict_flag = 1;
                             }
                         }
 
                         if(strcmp((char*)rData1,"ok ") == 0) //母车释放阻塞信号
                         {
-                            UARTprintf("release received\r\n");
+                            //UARTprintf("release received\r\n");
                             StatusDeal(5);
                         }
                         else if(strcmp((char*)rData1,"X ") == 0) //子车启动信号
                         {
-                            UARTprintf("start received\r\n");
+                            //UARTprintf("start received\r\n");
                             StatusDeal(4);
                         }
                         /*else // para set
