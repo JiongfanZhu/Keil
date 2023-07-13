@@ -60,24 +60,25 @@ int iTimerEncoder;
 
 float ADC_Value = 0;
 float last_ADC_Value = 0; //上一次角度
-float ADC_buff[ADC_INDEX_MAX] = {0};
-uint8_t ADC_index = 0;
 
 int setspeed = 0;
+int pwm_set = 0; //设定pwm
 
 uint8_t test_flag = 1;      //测试模式
-uint8_t pid_reset_flag = 0;
-uint8_t x_pid_flag = 0;
-uint8_t theta_pid_flag = 0;
 uint8_t setspeed_flag = 0;
+uint8_t x_pid_flag = 0;
 
 float theta0 = 1440; //稳定位置
 
-uint8_t x_last_flag = 0;
 uint8_t data_flag = 0;
 
-uint8_t question = 0;
-uint8_t abs_flag = 0;
+uint8_t mode = 0; //模式
+uint8_t reset_flag = 0; //复位标识
+uint8_t up_flag = 0; //起振标识
+uint8_t hold_flag = 0; //起振标识0
+uint8_t count_control = 0; //控制触发计数
+uint8_t control_way = 0;
+int up_speed = 0;
 
 /* USER CODE END PV */
 
@@ -146,47 +147,70 @@ int main(void)
 	HAL_ADCEx_Calibration_Start(&hadc1);
 	HAL_ADC_Start_IT(&hadc1);
 	PID_init();
-	Code_Init();
 	
 	while(HAL_UART_Receive_IT(&huart3, &rx_buf3, 1) != HAL_OK); // user
 	
-	//test_flag = 0;
-	if(test_flag==1)
-	{
-		x_pid_flag = 1;
-		x_last_flag = 0;
-	}
-	else
-	{
-		x_pid_flag = 1;
-		x_last_flag = 0;
-	}
-
+	test_flag = 0;
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
-  {
-		/*if(data_flag == 0) //数据被利用
+  {	
+		if(reset_flag == 0) //默认模式
 		{
-			HAL_ADC_Start_IT(&hadc1); //开启中断
-		}*/
+			Code_Init();
+			//control_flag = 1;
+			printf("reset ok\r\n");
+		}
+		else if(up_flag == 1) //起振模式
+		{			
+			if(hold_flag == 0) //没给初速度
+			{
+				hold_flag = 1;
+				
+				pwm_set = -500;
+				HAL_Delay(300);
+				pwm_set = 0;
+				HAL_Delay(500);
+			}
+			else
+			{
+				if(ADC_Value>150 && ADC_Value<180) //从左向右带速度
+				{
+					if(last_ADC_Value>ADC_Value)
+					{
+						pwm_set = up_speed;
+						HAL_Delay(100);
+					}
+					else
+					{
+						pwm_set = 0;
+					}
+				}
+				else if(ADC_Value>-200 && ADC_Value<-190) //从右向左带速度
+				{
+					if(last_ADC_Value>ADC_Value)
+					{
+						pwm_set = -up_speed;
+						HAL_Delay(100);
+					}
+					else
+					{
+						pwm_set = 0;
+					}
+				}
+				else
+				{
+					pwm_set = 0;
+				}
+				HAL_Delay(10);
+			}
+			
+		}
 		
-		/*if(test_flag==1)
-		{
-			Wheel(0);
-			HAL_Delay(2000);
-			Wheel(2000);
-			HAL_Delay(2000);
-			Wheel(0);
-			HAL_Delay(2000);
-			Wheel(-2000);
-			HAL_Delay(2000);
-		}*/
 		
-
-		//printf("Wheel=%d\r\n",GetTimEnCoder());
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -244,11 +268,17 @@ void SystemClock_Config(void)
 void Code_Init() //全局初始化
 {
 	__HAL_TIM_SET_COUNTER(&htim1,0); //重设编码器初值
-	pid_reset_flag = 0; //相关变量清空
+	mode = 0; //默认模式
 	Wheel(0); //电机停转
-	data_flag = 0;
-	ADC_Value = 0;
+	data_flag = 0; //清空有效数据
+	ADC_Value = 0; //清空寄存器
+	up_flag = 0; //取消起振
+	count_control = 0;
 	x_pid_flag = 0;
+	setspeed = 0;
+	setspeed_flag = 0;
+	hold_flag = 0;
+	reset_flag = 1; //复位完成
 	HAL_ADC_Start_IT(&hadc1); //开启中断
 }
 
@@ -257,14 +287,14 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) //获取adc值
 		//HAL_ADC_Stop_IT(&hadc1); //关闭中断
 		if(data_flag == 0) //数据被利用
 		{
-			last_ADC_Value = ADC_Value; //上一次角度
 			ADC_Value = HAL_ADC_GetValue(&hadc1)-theta0;
-			if(ADC_Value>2125)
+			if(ADC_Value>2145)
 			{
 				ADC_Value = -ADC_Value;
 			}
 			ADC_Value = ADC_Value*360.0/4096.0;
-			if(ADC_Value>200 || ADC_Value<-200)ADC_Value=last_ADC_Value;
+			//if(ADC_Value>120||ADC_Value<-126)ADC_Value = 180;
+			//if(ADC_Value>200 || ADC_Value<-200)ADC_Value=last_ADC_Value;
 			data_flag = 1;
 		}
 		//HAL_ADC_Start_IT(&hadc1); //开启中断
@@ -274,7 +304,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) //获取adc值
 int GetTimEnCoder() //读取编码器值
 {
 	iTimerEncoder = (short)(__HAL_TIM_GET_COUNTER(&htim1));
-	__HAL_TIM_SET_COUNTER(&htim1,0);
+	__HAL_TIM_SET_COUNTER(&htim1,0); //编码器复位
 	return iTimerEncoder;
 }
 
@@ -334,42 +364,63 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	if (htim == (&htim4)) // internal clock -> 1ms
 	{
 		
-		/*if(x_last_flag==0)
-		{
-			x_mark = GetTimEnCoder();
-			x_last_flag = 1;
-		}
-		else */
-		if(x_pid_flag==1 && i%15==0) // 电机位置环
+		if(x_pid_flag == 1 && i%15==0) // 电机位置环
 		{	
 			speed = GetTimEnCoder();
-			//if(speed>=10000 || speed<=-10000)speed=last_speed;
-			
-			//x_last = GetTimEnCoder();
-			//last_speed = speed;
-			
-			x_theta = PID_x_update(0,speed); //用当前编码盘数据作位移数据
+
+			x_theta = PID_x_update(setspeed_flag*setspeed,speed); //用电机速度更新目标角度
 		}
 			
 		pwm = (int)PID_speed_update(x_theta*x_pid_flag,ADC_Value);
+		last_ADC_Value = ADC_Value;
 		data_flag = 0;
-		HAL_ADC_Start_IT(&hadc1); //开启中断
 		
-		if(ADC_Value>-60 && ADC_Value<60)
+		
+		if(mode==2 && up_flag==1 && ADC_Value>-5 && ADC_Value<5) //模式2起振达到控制区间
+		{
+			count_control ++;
+			if(count_control>=30)
+			{
+				//__HAL_TIM_SET_COUNTER(&htim1,0); //编码器复位
+				x_pid_flag = 1;
+				up_flag = 0;
+				if(last_ADC_Value>ADC_Value)control_way = 1;
+				else control_way = -1;
+			}
+		}
+		else if(up_flag==0 && count_control>0)
+		{
+			count_control--;
+			Wheel(300*control_way);
+			if(ADC_Value>-5 && ADC_Value<5)
+			{
+				__HAL_TIM_SET_COUNTER(&htim1,0);
+				count_control=0;
+			}
+		}
+		else if(ADC_Value>-30 && ADC_Value<30 && mode==2)
 		{
 			Wheel(pwm);
+		}
+		else if((mode==1 || mode==2)&& up_flag==1) //起振过程
+		{
+			Wheel(pwm_set);
 		}
 		else
 		{
 			Wheel(0);
 		}
+	
+		HAL_ADC_Start_IT(&hadc1); //开启中断
 
-		if(test_flag == 1 && i%5 == 0)
+		if(i%5 == 0)
 		{
 			//printf("%d\n",speed);
-			printf("%.2f,%d,%.2f\n",ADC_Value,speed,x_theta);
+			//printf("%.2f,%d,%.2f\n",ADC_Value,speed,x_theta);
+			//printf("%.2f\r\n",ADC_Value);
 			//printf("%f,%f\n",ADC_Value,theta_speed);
 		}
+		
 		if(i>=100)
 		{
 			i=0;
@@ -390,9 +441,36 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //串口回调函数
 			{  
       			rDataFlag3 = 1;
 				rDataCount3 = 0;
-						if(strcmp((char*)rData3,"stop ")==0) // find stop flag
+						if(strcmp((char*)rData3,"0 ")==0)
 						{
-
+							reset_flag = 0; //复位标识无效
+						}
+						else if(strcmp((char*)rData3,"1 ")==0)
+						{
+							mode = 1; // 起振模式
+							up_flag = 1;
+							up_speed = 400;
+							printf("mode 1 set\r\n");
+						}
+						else if(strcmp((char*)rData3,"2 ")==0)
+						{
+							mode = 2; // 起振模式
+							up_flag = 1;
+							x_pid_flag = 1;
+							up_speed = 300;
+							printf("mode 2 set\r\n");
+						}
+						else if(strcmp((char*)rData3,"3 ")==0)
+						{
+							setspeed = 8;
+							setspeed_flag = 1;
+							printf("mode 3 set\r\n");
+						}
+						else if(strcmp((char*)rData3,"4 ")==0)
+						{
+							setspeed = 0;
+							setspeed_flag = 0;
+							printf("mode 4 set\r\n");
 						}
 						memset(rData3,0,sizeof(rData3)); //清空缓存数组
 					//for(int i=0;i<40;i++)rData3[i]='\0'; // clear buffer

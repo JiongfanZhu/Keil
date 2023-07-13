@@ -24,13 +24,13 @@ void PID_init(void)
     pid_v.err=0.0;         pid_v.err_last=0.0;
     pid_v.err_next=0.0;    pid_v.voltage=0.0;
     pid_v.integral=0.0;    pid_v.Kp=88*0.6;
-    pid_v.Ki=0;          	pid_v.Kd=900*0.6;
+    pid_v.Ki=0;          	pid_v.Kd=950*0.6;
 
     pid_x.SetSpeed=0.0;     pid_x.ActualSpeed=0.0;
     pid_x.err=0.0;          pid_x.err_last=0.0;
     pid_x.err_next=0.0;     pid_x.voltage=0.0;
-    pid_x.integral=0.0;     pid_x.Kp=0.25;
-    pid_x.Ki=0.002;           pid_x.Kd=-0.05;
+    pid_x.integral=0.0;     pid_x.Kp=0;
+    pid_x.Ki=0.12;           pid_x.Kd=0;
 
     pid_theta.SetSpeed=0.0; pid_theta.ActualSpeed=0.0;
     pid_theta.err=0.0;      pid_theta.err_last=0.0;
@@ -48,7 +48,11 @@ float PID_x_update(float set_x,float actual_x) //Î»ÒÆÊ½
 
     /*calculate output speed*/
     pid->err=pid->SetSpeed-pid->ActualSpeed;
-    pid->integral+=pid->err;
+	
+		//if(pid->err<15)
+		pid->integral+=pid->err;
+		
+		pid->integral *= 0.88;
 
     pid->voltage=pid->Kp*pid->err+pid->Ki*pid->integral+pid->Kd*(pid->err-pid->err_last);
     pid->err_last=pid->err;
