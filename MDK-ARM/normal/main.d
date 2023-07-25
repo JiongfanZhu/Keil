@@ -28,7 +28,9 @@ normal/main.o: ..\Core\Src\main.c ..\Core\Inc\main.h \
   ..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_tim.h \
   ..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_tim_ex.h \
   ..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_uart.h \
-  ..\Core\Inc\tim.h ..\Core\Inc\usart.h ..\Core\Inc\gpio.h \
-  D:\Keil\ARM\ARMCLANG\Bin\..\include\string.h \
-  D:\Keil\ARM\ARMCLANG\Bin\..\include\stdio.h ..\Core\Inc\my_uart.h \
-  ..\Core\Inc\pid.h ..\Core\Inc\my_hmi.h
+  ..\Core\Inc\dma.h ..\Core\Inc\tim.h ..\Core\Inc\usart.h \
+  ..\Core\Inc\gpio.h D:\Keil\ARM\ARMCLANG\Bin\..\include\string.h \
+  D:\Keil\ARM\ARMCLANG\Bin\..\include\stdio.h \
+  D:\Keil\ARM\ARMCLANG\Bin\..\include\stdlib.h ..\Core\Inc\my_uart.h \
+  ..\Core\Inc\pid.h ..\Core\Inc\my_hmi.h ..\Core\Inc\car_camera.h \
+  D:\Keil\ARM\ARMCLANG\Bin\..\include\math.h

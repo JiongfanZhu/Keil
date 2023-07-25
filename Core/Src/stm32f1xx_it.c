@@ -22,11 +22,14 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
-
+extern uint8_t rx_len;
+extern uint8_t rx_buffer[255];
+extern uint8_t recv_end_flag;
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
@@ -56,6 +59,7 @@
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
+extern DMA_HandleTypeDef hdma_usart2_rx;
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
@@ -202,6 +206,20 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles DMA1 channel6 global interrupt.
+  */
+void DMA1_Channel6_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel6_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel6_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart2_rx);
+  /* USER CODE BEGIN DMA1_Channel6_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel6_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM4 global interrupt.
   */
 void TIM4_IRQHandler(void)
@@ -235,7 +253,20 @@ void USART1_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
-
+	if(RESET != __HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE)) //判读是否触发空闲中断
+  {
+      recv_end_flag = 1;
+      __HAL_UART_CLEAR_IDLEFLAG(&huart2); //清除空闲中断标志位
+      HAL_UART_DMAStop(&huart2); //关闭DMA
+      //以下两行用来清除中断，软件清除空闲中断先读SR后读DR,功能和第一句函数功能一样
+      // rx_len = (huart1.Instance->SR); //清除SR状态寄存器
+      // rx_len = (huart1.Instance->DR); //读取DR数据寄存器
+      rx_len = 255 - __HAL_DMA_GET_COUNTER(&hdma_usart2_rx); //获取接收的数据长度
+      // eg：本次接收到5个数据，但上次接收到10个数据，那么缓存数组里面只会把前五个数据覆盖，
+      // 而后面的数据需要人为手动清零，整体数组的清零需要在其他函数解析完数据后进行
+	    memset(&rx_buffer[rx_len],0,sizeof(255 - rx_len));
+  }
+	HAL_UART_Receive_DMA(&huart1, rx_buffer, 255); //重新打开DMA接收
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */

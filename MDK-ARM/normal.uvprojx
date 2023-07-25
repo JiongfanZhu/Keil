@@ -406,6 +406,11 @@
               <FilePath>../Core/Src/gpio.c</FilePath>
             </File>
             <File>
+              <FileName>dma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/dma.c</FilePath>
+            </File>
+            <File>
               <FileName>tim.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/tim.c</FilePath>
@@ -426,6 +431,11 @@
               <FilePath>../Core/Src/stm32f1xx_hal_msp.c</FilePath>
             </File>
             <File>
+              <FileName>my_hmi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\my_hmi.c</FilePath>
+            </File>
+            <File>
               <FileName>my_uart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Core\Src\my_uart.c</FilePath>
@@ -436,9 +446,9 @@
               <FilePath>..\Core\Src\pid.c</FilePath>
             </File>
             <File>
-              <FileName>my_hmi.c</FileName>
+              <FileName>car_camera.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Core\Src\my_hmi.c</FilePath>
+              <FilePath>..\Core\Src\car_camera.c</FilePath>
             </File>
           </Files>
         </Group>

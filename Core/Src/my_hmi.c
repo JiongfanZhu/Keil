@@ -46,8 +46,5 @@ void HMISendstart(void)
 
 void HMIReset(void)
 {
-	Q.data_send = 0;	Q.order_rec = 0;
-	Q.Q1 = 0;					Q.Q2 = 0;
-	Q.Q3 = 0;					Q.Q4 = 0;
-	Q.reset = 0;
+	Q.Q = 0;
 }
